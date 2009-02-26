@@ -8,8 +8,6 @@ def get_schema(conn):
 	with contextlib.closing(conn.cursor()) as cursor:
 		populate_schema(schema, cursor)
 
-	schema.sort()
-
 	return schema
 
 def populate_schema(schema, cursor):
@@ -29,14 +27,17 @@ def populate_schema(schema, cursor):
 	relations = {}
 	functions = {}
 
-	cursor.execute("SET search_path = pg_catalog")
+	cursor.execute("""SET search_path = pg_catalog""")
 
-	cursor.execute("SELECT oid, rolname FROM pg_roles")
+	cursor.execute("""SELECT oid, rolname
+	                  FROM pg_roles""")
 	for row in cursor:
 		oid, name = row
 		roles[oid] = name
 
-	cursor.execute("SELECT oid, lanname, lanowner, lanispl FROM pg_language")
+	cursor.execute("""SELECT oid, lanname, lanowner, lanispl
+	                  FROM pg_language
+	                  ORDER BY lanname""")
 	for row in cursor:
 		oid, name, owner_oid, userdefined = row
 		language = objects.Language(name, roles[owner_oid])
@@ -44,7 +45,9 @@ def populate_schema(schema, cursor):
 		if userdefined:
 			schema.members.append(language)
 
-	cursor.execute("SELECT oid, nspname, nspowner FROM pg_namespace")
+	cursor.execute("""SELECT oid, nspname, nspowner
+	                  FROM pg_namespace
+	                  ORDER BY nspname""")
 	for row in cursor:
 		oid, name, owner_oid = row
 		namespace = objects.Namespace(name, roles[owner_oid])
@@ -53,23 +56,29 @@ def populate_schema(schema, cursor):
 			schema.members.append(namespace)
 
 	# TODO: domain basetype etc.
-	cursor.execute("SELECT oid, typname, typnamespace, typowner, typnotnull FROM pg_type")
+	cursor.execute("""SELECT oid, typname, typnamespace, typowner, typnotnull
+	                  FROM pg_type
+	                  ORDER BY typnamespace, typname""")
 	for row in cursor:
 		oid, name, namespace_oid, owner_oid, notnull = row
 		type = objects.Type(name, roles[owner_oid], notnull)
 		types[oid] = type
 		namespaces[namespace_oid].members.append(type)
 
-	cursor.execute("SELECT oid, relname, relowner, relnamespace, relkind FROM pg_class")
+	cursor.execute("""SELECT oid, relname, relowner, relnamespace, relkind
+	                  FROM pg_class
+	                  ORDER BY relnamespace, relkind, relname""")
 	for row in cursor:
 		oid, name, owner_oid, namespace_oid, kind = row
 		relation = relation_types[kind](name, roles[owner_oid])
 		relations[oid] = relation
 		namespaces[namespace_oid].members.append(relation)
 
-	cursor.execute("""SELECT attrelid, attname, atttypid, attnotnull, adbin FROM pg_attribute
+	cursor.execute("""SELECT attrelid, attname, atttypid, attnotnull, adbin
+	                  FROM pg_attribute
 	                  LEFT OUTER JOIN pg_attrdef ON attrelid = adrelid AND attnum = adnum
-	                  WHERE attnum > 0 AND NOT attisdropped ORDER BY attrelid, attnum""")
+	                  WHERE attnum > 0 AND NOT attisdropped
+	                  ORDER BY attrelid, attnum""")
 	for row in cursor:
 		relation_oid, name, type_oid, notnull, default = row
 		columns = relations[relation_oid].columns
@@ -78,7 +87,9 @@ def populate_schema(schema, cursor):
 			columns.append(column)
 
 	# TODO: function properties
-	cursor.execute("SELECT oid, proname, pronamespace, proowner, prolang FROM pg_proc")
+	cursor.execute("""SELECT oid, proname, pronamespace, proowner, prolang
+	                  FROM pg_proc
+	                  ORDER BY pronamespace, proname""")
 	for row in cursor:
 		oid, name, namespace_oid, owner_oid, language_oid = row
 		function = objects.Function(name, roles[owner_oid], languages[language_oid])
@@ -86,7 +97,9 @@ def populate_schema(schema, cursor):
 		namespaces[namespace_oid].members.append(function)
 
 	# TODO: trigger properties
-	cursor.execute("""SELECT tgrelid, tgname, tgfoid FROM pg_trigger WHERE NOT tgisconstraint
+	cursor.execute("""SELECT tgrelid, tgname, tgfoid
+	                  FROM pg_trigger
+	                  WHERE NOT tgisconstraint
 	                  ORDER BY tgrelid, tgname""")
 	for row in cursor:
 		table_oid, name, function_oid = row

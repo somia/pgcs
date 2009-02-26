@@ -14,9 +14,6 @@ class ContainerMixin(object):
 	def __init__(self):
 		self.members = []
 
-	def sort(self):
-		self.members.sort(key=lambda member: (type(member), member))
-
 	def dump(self):
 		for member in self.members:
 			member.dump()
