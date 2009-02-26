@@ -23,6 +23,7 @@ def populate_schema(schema, cursor):
 	}
 
 	roles = {}
+	languages = {}
 	namespaces = {}
 	types = {}
 	relations = {}
@@ -33,6 +34,14 @@ def populate_schema(schema, cursor):
 	for row in cursor:
 		oid, name = row
 		roles[oid] = name
+
+	cursor.execute("SELECT oid, lanname, lanowner, lanispl FROM pg_language")
+	for row in cursor:
+		oid, name, owner_oid, userdefined = row
+		language = objects.Language(name, roles[owner_oid])
+		languages[oid] = language
+		if userdefined:
+			schema.members.append(language)
 
 	cursor.execute("SELECT oid, nspname, nspowner FROM pg_namespace")
 	for row in cursor:
@@ -68,7 +77,6 @@ def populate_schema(schema, cursor):
 			columns.append(column)
 
 	# TODO: functions
-	# TODO: languages
 	# TODO: operators, operator classes
 	# TODO: rules
 	# TODO: triggers

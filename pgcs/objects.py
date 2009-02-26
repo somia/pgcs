@@ -24,6 +24,15 @@ class ContainerMixin(object):
 class Schema(ContainerMixin):
 	__slots__ = ("members",)
 
+class Language(NameOrderingMixin):
+	__slots__ = ("name", "owner")
+
+	def __init__(self, *values):
+		self.name, self.owner = values
+
+	def dump(self):
+		print "Language", self.name, self.owner
+
 class Namespace(NameOrderingMixin, ContainerMixin):
 	__slots__ = ("name", "owner", "members")
 
