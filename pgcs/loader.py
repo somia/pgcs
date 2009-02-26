@@ -27,6 +27,7 @@ def populate_schema(schema, cursor):
 	namespaces = {}
 	types = {}
 	relations = {}
+	functions = {}
 
 	cursor.execute("SET search_path = pg_catalog")
 
@@ -76,7 +77,14 @@ def populate_schema(schema, cursor):
 			column = objects.Column(name, types[type_oid], notnull, default)
 			columns.append(column)
 
-	# TODO: functions
+	# TODO: function properties
+	cursor.execute("SELECT oid, proname, pronamespace, proowner, prolang FROM pg_proc")
+	for row in cursor:
+		oid, name, namespace_oid, owner_oid, language_oid = row
+		function = objects.Function(name, roles[owner_oid], languages[language_oid])
+		functions[oid] = function
+		namespaces[namespace_oid].members.append(function)
+
 	# TODO: operators, operator classes
 	# TODO: rules
 	# TODO: triggers

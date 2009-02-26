@@ -53,6 +53,15 @@ class Type(NameOrderingMixin):
 	def dump(self):
 		print "  Type", self.name, self.owner
 
+class Function(NameOrderingMixin):
+	__slots__ = ("name", "owner", "language")
+
+	def __init__(self, *values):
+		self.name, self.owner, self.language = values
+
+	def dump(self):
+		print "  Function", self.name, self.owner, self.language
+
 class EmptyRelation(NameOrderingMixin):
 	__slots__ = ("name", "owner")
 
