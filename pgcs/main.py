@@ -4,7 +4,10 @@ from contextlib import closing
 import psycopg2
 import psycopg2.extensions
 
-class NameOrderMixin(object):
+class NamedMixin(object):
+	def __str__(self): return self.name
+
+class NameOrderingMixin(NamedMixin):
 	def __lt__(self, other): return self.name < other.name
 	def __le__(self, other): return self.name <= other.name
 	def __eq__(self, other): return self.name == other.name
@@ -16,8 +19,8 @@ class NameOrderMixin(object):
 class Schema(object):
 	def __init__(self):
 		self.namespaces = {}
-		self.relations = {}
 		self.types = {}
+		self.relations = {}
 
 	def sort(self):
 		for namespace in self.namespaces.itervalues():
@@ -27,22 +30,23 @@ class Schema(object):
 		for namespace in sorted(self.namespaces.values()):
 			namespace.dump()
 
-class Namespace(NameOrderMixin):
-	__slots__ = ("oid", "name", "children")
+class Namespace(NameOrderingMixin):
+	__slots__ = ("oid", "name", "members")
 
 	def __init__(self, *values):
 		self.oid, self.name = values
-		self.children = []
+		self.members = []
 
 	def sort(self):
-		self.children.sort()
+		self.members.sort()
 
 	def dump(self):
 		print "Namespace", self.name
-		for child in self.children:
-			child.dump()
+		for member in self.members:
+			member.dump()
 
-class Type(NameOrderMixin):
+class Type(NameOrderingMixin):
+	# TODO: domain basetype etc.
 	__slots__ = ("oid", "name", "notnull")
 
 	def __init__(self, *values):
@@ -51,7 +55,7 @@ class Type(NameOrderMixin):
 	def dump(self):
 		print "  Type", self.name
 
-class Relation(NameOrderMixin):
+class Relation(NameOrderingMixin):
 	__slots__ = ("oid", "name", "columns")
 
 	def __init__(self, *values):
@@ -69,7 +73,7 @@ class Index(Relation): pass
 class Sequence(Relation): pass
 class Composite(Relation): pass
 
-class Column(object):
+class Column(NamedMixin):
 	__slots__ = ("name", "type", "notnull", "default")
 
 	def __init__(self, *values):
@@ -80,7 +84,7 @@ class Column(object):
 		if self.notnull:
 			print "notnull",
 		if self.default:
-			print "default",
+			print "default=" + self.default,
 		print
 
 def load_schema(cursor):
@@ -107,21 +111,21 @@ def load_schema(cursor):
 		oid, name, namespace_oid, notnull = row
 		type = Type(oid, name, notnull)
 		schema.types[oid] = type
-		schema.namespaces[namespace_oid].children.append(type)
+		schema.namespaces[namespace_oid].members.append(type)
 
 	cursor.execute("""SELECT oid, relname, relnamespace, relkind FROM pg_class""")
 	for row in cursor:
 		oid, name, namespace_oid, kind = row
 		relation = relation_types[kind](oid, name)
 		schema.relations[oid] = relation
-		schema.namespaces[namespace_oid].children.append(relation)
+		schema.namespaces[namespace_oid].members.append(relation)
 
 	cursor.execute("""SELECT attrelid, attname, atttypid, attnotnull, adbin FROM pg_attribute
 	                  LEFT OUTER JOIN pg_attrdef ON attrelid = adrelid AND attnum = adnum
 	                  WHERE attnum > 0 AND NOT attisdropped ORDER BY attrelid, attnum""")
 	for row in cursor:
 		relation_oid, name, type_oid, notnull, default = row
-		column = Column(name, type_oid, notnull, default)
+		column = Column(name, schema.types[type_oid], notnull, default)
 		schema.relations[relation_oid].columns.append(column)
 
 	schema.sort()
