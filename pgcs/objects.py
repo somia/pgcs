@@ -22,45 +22,44 @@ class ContainerMixin(object):
 			member.dump()
 
 class Schema(ContainerMixin):
-	__slots__ = ("members")
+	__slots__ = ("members",)
 
 class Namespace(NameOrderingMixin, ContainerMixin):
-	__slots__ = ("name", "members")
+	__slots__ = ("name", "owner", "members")
 
-	def __init__(self, name):
-		self.name = name
+	def __init__(self, *values):
+		self.name, self.owner = values
 		self.members = []
 
 	def dump(self):
-		print "Namespace", self.name
+		print "Namespace", self.name, self.owner
 		ContainerMixin.dump(self)
 
 class Type(NameOrderingMixin):
-	# TODO: domain basetype etc.
-	__slots__ = ("name", "notnull")
+	__slots__ = ("name", "owner", "notnull")
 
 	def __init__(self, *values):
-		self.name, self.notnull = values
+		self.name, self.owner, self.notnull = values
 
 	def dump(self):
-		print "  Type", self.name
+		print "  Type", self.name, self.owner
 
 class EmptyRelation(NameOrderingMixin):
-	__slots__ = ("name")
+	__slots__ = ("name", "owner")
 
 	columns = None
 
-	def __init__(self, name):
-		self.name = name
+	def __init__(self, *values):
+		self.name, self.owner = values
 
 	def dump(self):
-		print " ", repr(type(self)).split("'")[1].split(".")[2], self.name
+		print " ", repr(type(self)).split("'")[1].split(".")[2], self.name, self.owner
 
 class Relation(EmptyRelation):
-	__slots__ = ("name", "columns")
+	__slots__ = ("name", "owner", "columns")
 
-	def __init__(self, name):
-		self.name = name
+	def __init__(self, *values):
+		EmptyRelation.__init__(self, *values)
 		self.columns = []
 
 	def dump(self):

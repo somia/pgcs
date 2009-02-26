@@ -22,31 +22,38 @@ def populate_schema(schema, cursor):
 		"v": objects.View,
 	}
 
+	roles = {}
 	namespaces = {}
 	types = {}
 	relations = {}
 
 	cursor.execute("SET search_path = pg_catalog")
 
-	cursor.execute("SELECT oid, nspname FROM pg_namespace")
+	cursor.execute("SELECT oid, rolname FROM pg_roles")
 	for row in cursor:
 		oid, name = row
-		namespace = objects.Namespace(name)
+		roles[oid] = name
+
+	cursor.execute("SELECT oid, nspname, nspowner FROM pg_namespace")
+	for row in cursor:
+		oid, name, owner_oid = row
+		namespace = objects.Namespace(name, roles[owner_oid])
 		namespaces[oid] = namespace
 		if not name.startswith("pg_"):
 			schema.members.append(namespace)
 
-	cursor.execute("SELECT oid, typname, typnamespace, typnotnull FROM pg_type")
+	# TODO: domain basetype etc.
+	cursor.execute("SELECT oid, typname, typnamespace, typowner, typnotnull FROM pg_type")
 	for row in cursor:
-		oid, name, namespace_oid, notnull = row
-		type = objects.Type(name, notnull)
+		oid, name, namespace_oid, owner_oid, notnull = row
+		type = objects.Type(name, roles[owner_oid], notnull)
 		types[oid] = type
 		namespaces[namespace_oid].members.append(type)
 
-	cursor.execute("SELECT oid, relname, relnamespace, relkind FROM pg_class")
+	cursor.execute("SELECT oid, relname, relowner, relnamespace, relkind FROM pg_class")
 	for row in cursor:
-		oid, name, namespace_oid, kind = row
-		relation = relation_types[kind](name)
+		oid, name, owner_oid, namespace_oid, kind = row
+		relation = relation_types[kind](name, roles[owner_oid])
 		relations[oid] = relation
 		namespaces[namespace_oid].members.append(relation)
 
@@ -59,3 +66,9 @@ def populate_schema(schema, cursor):
 		if columns is not None:
 			column = objects.Column(name, types[type_oid], notnull, default)
 			columns.append(column)
+
+	# TODO: functions
+	# TODO: languages
+	# TODO: operators, operator classes
+	# TODO: rules
+	# TODO: triggers
