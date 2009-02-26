@@ -10,62 +10,69 @@ class NameOrderingMixin(NamedMixin):
 	def __ge__(self, other): return self.name >= other.name
 	def __hash__(self): return hash(self.name)
 
-class Schema(object):
+class ContainerMixin(object):
 	def __init__(self):
-		self.namespaces = {}
-		self.types = {}
-		self.relations = {}
-
-	def sort(self):
-		for namespace in self.namespaces.itervalues():
-			namespace.sort()
-
-	def dump(self):
-		for namespace in sorted(self.namespaces.values()):
-			namespace.dump()
-
-class Namespace(NameOrderingMixin):
-	__slots__ = ("oid", "name", "members")
-
-	def __init__(self, *values):
-		self.oid, self.name = values
 		self.members = []
 
 	def sort(self):
-		self.members.sort()
+		self.members.sort(key=lambda member: (type(member), member))
 
 	def dump(self):
-		print "Namespace", self.name
 		for member in self.members:
 			member.dump()
 
+class Schema(ContainerMixin):
+	__slots__ = ("members")
+
+class Namespace(NameOrderingMixin, ContainerMixin):
+	__slots__ = ("name", "members")
+
+	def __init__(self, name):
+		self.name = name
+		self.members = []
+
+	def dump(self):
+		print "Namespace", self.name
+		ContainerMixin.dump(self)
+
 class Type(NameOrderingMixin):
 	# TODO: domain basetype etc.
-	__slots__ = ("oid", "name", "notnull")
+	__slots__ = ("name", "notnull")
 
 	def __init__(self, *values):
-		self.oid, self.name, self.notnull = values
+		self.name, self.notnull = values
 
 	def dump(self):
 		print "  Type", self.name
 
-class Relation(NameOrderingMixin):
-	__slots__ = ("oid", "name", "columns")
+class EmptyRelation(NameOrderingMixin):
+	__slots__ = ("name")
 
-	def __init__(self, *values):
-		self.oid, self.name = values
-		self.columns = []
+	columns = None
+
+	def __init__(self, name):
+		self.name = name
 
 	def dump(self):
 		print " ", repr(type(self)).split("'")[1].split(".")[2], self.name
+
+class Relation(EmptyRelation):
+	__slots__ = ("name", "columns")
+
+	def __init__(self, name):
+		self.name = name
+		self.columns = []
+
+	def dump(self):
+		EmptyRelation.dump(self)
 		for column in self.columns:
 			column.dump()
 
+class Composite(Relation): pass
+class Index(Relation): pass
+class Sequence(EmptyRelation): pass
 class Table(Relation): pass
 class View(Relation): pass
-class Index(Relation): pass
-class Sequence(Relation): pass
-class Composite(Relation): pass
 
 class Column(NamedMixin):
 	__slots__ = ("name", "type", "notnull", "default")
