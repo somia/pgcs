@@ -85,6 +85,13 @@ def populate_schema(schema, cursor):
 		functions[oid] = function
 		namespaces[namespace_oid].members.append(function)
 
+	# TODO: trigger properties
+	cursor.execute("""SELECT tgrelid, tgname, tgfoid FROM pg_trigger WHERE NOT tgisconstraint
+	                  ORDER BY tgrelid, tgname""")
+	for row in cursor:
+		table_oid, name, function_oid = row
+		trigger = objects.Trigger(name, functions[function_oid])
+		relations[table_oid].triggers.append(trigger)
+
 	# TODO: operators, operator classes
 	# TODO: rules
-	# TODO: triggers

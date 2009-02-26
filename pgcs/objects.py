@@ -88,8 +88,19 @@ class Relation(EmptyRelation):
 class Composite(Relation): pass
 class Index(Relation): pass
 class Sequence(EmptyRelation): pass
-class Table(Relation): pass
 class View(Relation): pass
+
+class Table(Relation):
+	__slots__ = ("name", "owner", "columns", "triggers")
+
+	def __init__(self, *values):
+		Relation.__init__(self, *values)
+		self.triggers = []
+
+	def dump(self):
+		Relation.dump(self)
+		for trigger in self.triggers:
+			trigger.dump()
 
 class Column(NamedMixin):
 	__slots__ = ("name", "type", "notnull", "default")
@@ -104,3 +115,12 @@ class Column(NamedMixin):
 		if self.default:
 			print "default=" + self.default,
 		print
+
+class Trigger(NameOrderingMixin):
+	__slots__ = ("name", "function")
+
+	def __init__(self, *values):
+		self.name, self.function = values
+
+	def dump(self):
+		print "    Trigger", self.name, self.function
