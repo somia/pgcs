@@ -26,6 +26,8 @@ def populate_schema(schema, cursor):
 	types = {}
 	relations = {}
 	functions = {}
+	operators = {}
+	opclasses = {}
 
 	cursor.execute("""SET search_path = pg_catalog""")
 
@@ -96,6 +98,7 @@ def populate_schema(schema, cursor):
 		functions[oid] = function
 		namespaces[namespace_oid].members.append(function)
 
+	# TODO: constraint triggers
 	# TODO: trigger properties
 	cursor.execute("""SELECT tgrelid, tgname, tgfoid
 	                  FROM pg_trigger
@@ -116,4 +119,29 @@ def populate_schema(schema, cursor):
 		rule = objects.Rule(name)
 		relations[table_oid].rules.append(rule)
 
-	# TODO: operators, operator classes
+	# TODO: operator properties
+	cursor.execute("""SELECT oid, oprname, oprnamespace, oprowner
+	                  FROM pg_operator
+	                  ORDER BY oprnamespace, oprname""")
+	for row in cursor:
+		oid, name, namespace_oid, owner_oid = row
+		operator = objects.Operator(name, roles[owner_oid])
+		operators[oid] = operator
+		namespaces[namespace_oid].members.append(operator)
+
+	# TODO: operator class operators/functions
+	cursor.execute("""SELECT pg_opclass.oid, amname, opcname, opcnamespace, opcowner,
+	                         opcintype, opcdefault, opckeytype
+	                  FROM pg_opclass, pg_am
+                          WHERE opcmethod = pg_am.oid
+	                  ORDER BY opcnamespace, opcname, opcintype, amname""")
+	for row in cursor:
+		oid, method, name, namespace_oid, owner_oid, intype_oid, default, keytype_oid = row
+		owner = roles[owner_oid]
+		intype = types[intype_oid]
+		keytype = types.get(keytype_oid)
+		opclass = objects.OperatorClass(method, name, owner, intype, default, keytype)
+		opclasses[oid] = opclass
+		namespaces[namespace_oid].members.append(opclass)
+
+	# TODO: casts

@@ -142,3 +142,27 @@ class Rule(NameOrderingMixin):
 
 	def dump(self):
 		print "    Rule", self.name
+
+class Operator(NameOrderingMixin):
+	__slots__ = ("name", "owner")
+
+	def __init__(self, *values):
+		self.name, self.owner = values
+
+	def dump(self):
+		print "  Operator", self.name, self.owner
+
+class OperatorClass(NameOrderingMixin):
+	__slots__ = ("method", "name", "owner", "intype", "default", "keytype")
+
+	def __init__(self, *values):
+		self.method, self.name, self.owner, self.intype, self.default, self.keytype \
+			= values
+
+	def dump(self):
+		print "  OperatorClass", self.name, self.owner, self.intype,
+		if self.default:
+			print "default",
+		if self.keytype is not None:
+			print "key=%s" % self.keytype,
+		print
