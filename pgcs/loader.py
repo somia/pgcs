@@ -106,5 +106,14 @@ def populate_schema(schema, cursor):
 		trigger = objects.Trigger(name, functions[function_oid])
 		relations[table_oid].triggers.append(trigger)
 
+	# TODO: rule properties
+	cursor.execute("""SELECT rulename, ev_class
+	                  FROM pg_rewrite
+                          WHERE rulename != '_RETURN'
+	                  ORDER BY ev_class, rulename""")
+	for row in cursor:
+		name, table_oid = row
+		rule = objects.Rule(name)
+		relations[table_oid].rules.append(rule)
+
 	# TODO: operators, operator classes
-	# TODO: rules

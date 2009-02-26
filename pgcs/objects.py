@@ -59,7 +59,7 @@ class Function(NameOrderingMixin):
 	def dump(self):
 		print "  Function", self.name, self.owner, self.language
 
-class EmptyRelation(NameOrderingMixin):
+class Relation(NameOrderingMixin):
 	__slots__ = ("name", "owner")
 
 	columns = None
@@ -70,32 +70,44 @@ class EmptyRelation(NameOrderingMixin):
 	def dump(self):
 		print " ", repr(type(self)).split("'")[1].split(".")[2], self.name, self.owner
 
-class Relation(EmptyRelation):
+class ColumnRelation(Relation):
 	__slots__ = ("name", "owner", "columns")
 
 	def __init__(self, *values):
-		EmptyRelation.__init__(self, *values)
+		Relation.__init__(self, *values)
 		self.columns = []
 
 	def dump(self):
-		EmptyRelation.dump(self)
+		Relation.dump(self)
 		for column in self.columns:
 			column.dump()
 
-class Composite(Relation): pass
-class Index(Relation): pass
-class Sequence(EmptyRelation): pass
-class View(Relation): pass
-
-class Table(Relation):
-	__slots__ = ("name", "owner", "columns", "triggers")
+class RuleRelation(ColumnRelation):
+	__slots__ = ("name", "owner", "columns", "rules")
 
 	def __init__(self, *values):
-		Relation.__init__(self, *values)
+		ColumnRelation.__init__(self, *values)
+		self.rules = []
+
+	def dump(self):
+		ColumnRelation.dump(self)
+		for rule in self.rules:
+			rule.dump()
+
+class Sequence(Relation): pass
+class Composite(ColumnRelation): pass
+class Index(ColumnRelation): pass
+class View(RuleRelation): pass
+
+class Table(RuleRelation):
+	__slots__ = ("name", "owner", "columns", "rules", "triggers")
+
+	def __init__(self, *values):
+		RuleRelation.__init__(self, *values)
 		self.triggers = []
 
 	def dump(self):
-		Relation.dump(self)
+		RuleRelation.dump(self)
 		for trigger in self.triggers:
 			trigger.dump()
 
@@ -121,3 +133,12 @@ class Trigger(NameOrderingMixin):
 
 	def dump(self):
 		print "    Trigger", self.name, self.function
+
+class Rule(NameOrderingMixin):
+	__slots__ = ("name",)
+
+	def __init__(self, name):
+		self.name = name
+
+	def dump(self):
+		print "    Rule", self.name
