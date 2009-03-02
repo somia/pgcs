@@ -65,13 +65,14 @@ def populate_schema(schema, cursor):
 		"p": objects.Type, # pseudo
 	}
 
-	cursor.execute("""SELECT oid, typname, typnamespace, typowner, typtype, typnotnull
+	cursor.execute("""SELECT oid, typname, typnamespace, typowner, typtype, typnotnull,
+	                         typdefault
 	                  FROM pg_type
 	                  WHERE typisdefined
 	                  ORDER BY typnamespace, typname""")
 	for row in cursor:
-		oid, name, namespace_oid, owner_oid, kind, notnull = row
-		type = type_types[kind](name, roles[owner_oid], notnull)
+		oid, name, namespace_oid, owner_oid, kind, notnull, default = row
+		type = type_types[kind](name, roles[owner_oid], notnull, default)
 		types[oid] = type
 		if kind in "bde":
 			namespaces[namespace_oid].members.append(type)
@@ -81,7 +82,7 @@ def populate_schema(schema, cursor):
 	                  WHERE typisdefined AND typbasetype != 0""")
 	for row in cursor:
 		oid, base_oid = row
-		types[oid].basetype = types[base_oid]
+		types[oid].init_base(types[base_oid])
 
 	# Relations
 

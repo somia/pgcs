@@ -42,19 +42,28 @@ class Namespace(NameOrderingMixin, ContainerMixin):
 		ContainerMixin.dump(self)
 
 class Type(NameOrderingMixin):
-	__slots__ = ("name", "owner", "notnull")
+	__slots__ = ("name", "owner", "notnull", "default")
 
 	def __init__(self, *values):
-		self.name, self.owner, self.notnull = values
+		self.name, self.owner, self.notnull, self.default = values
 
 	def dump(self):
-		print "  Type", self.name, self.owner
+		print "  Type", self.name, self.owner,
+		if self.default:
+			print "default=" + self.default,
+		print
 
 class Domain(Type):
-	__slots__ = ("name", "owner", "notnull", "basetype")
+	__slots__ = ("name", "owner", "notnull", "default", "basetype")
+
+	def init_base(self, basetype):
+		self.basetype = basetype
 
 	def dump(self):
-		print "  Domain", self.name, self.owner, self.basetype
+		print "  Domain", self.name, self.owner, self.basetype,
+		if self.default:
+			print "default=" + self.default,
+		print
 
 class Function(NameOrderingMixin):
 	__slots__ = ("name", "owner", "language")
