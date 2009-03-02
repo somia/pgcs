@@ -50,6 +50,12 @@ class Type(NameOrderingMixin):
 	def dump(self):
 		print "  Type", self.name, self.owner
 
+class Domain(Type):
+	__slots__ = ("name", "owner", "notnull", "basetype")
+
+	def dump(self):
+		print "  Domain", self.name, self.owner, self.basetype
+
 class Function(NameOrderingMixin):
 	__slots__ = ("name", "owner", "language")
 

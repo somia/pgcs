@@ -11,15 +11,6 @@ def get_schema(conn):
 	return schema
 
 def populate_schema(schema, cursor):
-	relation_types = {
-		"S": objects.Sequence,
-		"c": objects.Composite,
-		"i": objects.Index,
-		"r": objects.Table,
-		"t": objects.Table,
-		"v": objects.View,
-	}
-
 	roles = {}
 	languages = {}
 	namespaces = {}
@@ -31,11 +22,15 @@ def populate_schema(schema, cursor):
 
 	cursor.execute("""SET search_path TO pg_catalog""")
 
+	# Roles
+
 	cursor.execute("""SELECT oid, rolname
 	                  FROM pg_roles""")
 	for row in cursor:
 		oid, name = row
 		roles[oid] = name
+
+	# Languages
 
 	cursor.execute("""SELECT oid, lanname, lanowner, lanispl
 	                  FROM pg_language
@@ -47,6 +42,8 @@ def populate_schema(schema, cursor):
 		if userdefined:
 			schema.members.append(language)
 
+	# Namespaces
+
 	cursor.execute("""SELECT oid, nspname, nspowner
 	                  FROM pg_namespace
 	                  ORDER BY nspname""")
@@ -57,15 +54,45 @@ def populate_schema(schema, cursor):
 		if not name.startswith("pg_"):
 			schema.members.append(namespace)
 
-	# TODO: domain basetype etc.
-	cursor.execute("""SELECT oid, typname, typnamespace, typowner, typnotnull
+	# Types
+	# TODO: type properties
+
+	type_types = {
+		"b": objects.Type,
+		"c": objects.Type, # composite
+		"d": objects.Domain,
+		"e": objects.Type, # enum
+		"p": objects.Type, # pseudo
+	}
+
+	cursor.execute("""SELECT oid, typname, typnamespace, typowner, typtype, typnotnull
 	                  FROM pg_type
+	                  WHERE typisdefined
 	                  ORDER BY typnamespace, typname""")
 	for row in cursor:
-		oid, name, namespace_oid, owner_oid, notnull = row
-		type = objects.Type(name, roles[owner_oid], notnull)
+		oid, name, namespace_oid, owner_oid, kind, notnull = row
+		type = type_types[kind](name, roles[owner_oid], notnull)
 		types[oid] = type
-		namespaces[namespace_oid].members.append(type)
+		if kind in "bde":
+			namespaces[namespace_oid].members.append(type)
+
+	cursor.execute("""SELECT oid, typbasetype
+	                  FROM pg_type
+	                  WHERE typisdefined AND typbasetype != 0""")
+	for row in cursor:
+		oid, base_oid = row
+		types[oid].basetype = types[base_oid]
+
+	# Relations
+
+	relation_types = {
+		"S": objects.Sequence,
+		"c": objects.Composite,
+		"i": objects.Index,
+		"r": objects.Table,
+		"t": objects.Table,
+		"v": objects.View,
+	}
 
 	cursor.execute("""SELECT oid, relname, relowner, relnamespace, relkind
 	                  FROM pg_class
@@ -89,7 +116,9 @@ def populate_schema(schema, cursor):
 			column = objects.Column(name, types[type_oid], notnull, default)
 			columns.append(column)
 
+	# Functions
 	# TODO: function properties
+
 	cursor.execute("""SELECT oid, proname, pronamespace, proowner, prolang
 	                  FROM pg_proc
 	                  ORDER BY pronamespace, proname""")
@@ -99,8 +128,10 @@ def populate_schema(schema, cursor):
 		functions[oid] = function
 		namespaces[namespace_oid].members.append(function)
 
+	# Triggers
 	# TODO: constraint triggers
 	# TODO: trigger properties
+
 	cursor.execute("""SELECT tgrelid, tgname, tgfoid
 	                  FROM pg_trigger
 	                  WHERE NOT tgisconstraint
@@ -110,7 +141,9 @@ def populate_schema(schema, cursor):
 		trigger = objects.Trigger(name, functions[function_oid])
 		relations[table_oid].triggers.append(trigger)
 
+	# Rules
 	# TODO: rule properties
+
 	cursor.execute("""SELECT rulename, ev_class
 	                  FROM pg_rewrite
                           WHERE rulename != '_RETURN'
@@ -120,7 +153,10 @@ def populate_schema(schema, cursor):
 		rule = objects.Rule(name)
 		relations[table_oid].rules.append(rule)
 
+	# Operators
 	# TODO: operator properties
+	# TODO: operator class operators/functions
+
 	cursor.execute("""SELECT oid, oprname, oprnamespace, oprowner
 	                  FROM pg_operator
 	                  ORDER BY oprnamespace, oprname""")
@@ -130,7 +166,6 @@ def populate_schema(schema, cursor):
 		operators[oid] = operator
 		namespaces[namespace_oid].members.append(operator)
 
-	# TODO: operator class operators/functions
 	cursor.execute("""SELECT pg_opclass.oid, amname, opcname, opcnamespace, opcowner,
 	                         opcintype, opcdefault, opckeytype
 	                  FROM pg_opclass, pg_am
