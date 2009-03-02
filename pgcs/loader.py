@@ -76,7 +76,8 @@ def populate_schema(schema, cursor):
 		relations[oid] = relation
 		namespaces[namespace_oid].members.append(relation)
 
-	cursor.execute("""SELECT attrelid, attname, atttypid, attnotnull, adbin
+	cursor.execute("""SELECT attrelid, attname, atttypid, attnotnull,
+	                         pg_get_expr(adbin, attrelid)
 	                  FROM pg_attribute
 	                  LEFT OUTER JOIN pg_attrdef ON attrelid = adrelid AND attnum = adnum
 	                  WHERE attnum > 0 AND NOT attisdropped
