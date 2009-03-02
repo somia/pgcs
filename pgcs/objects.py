@@ -1,3 +1,6 @@
+def typename(o):
+	return repr(type(o)).split("'")[1].split(".")[2]
+
 class NamedMixin(object):
 	def __str__(self): return self.name
 
@@ -54,7 +57,11 @@ class Type(NameOrderingMixin):
 		print
 
 class Domain(Type):
-	__slots__ = ("name", "owner", "notnull", "default", "basetype")
+	__slots__ = ("name", "owner", "notnull", "default", "basetype", "constraints")
+
+	def __init__(self, *values):
+		Type.__init__(self, *values)
+		self.constraints = []
 
 	def init_base(self, basetype):
 		self.basetype = basetype
@@ -64,6 +71,8 @@ class Domain(Type):
 		if self.default:
 			print "default=" + self.default,
 		print
+		for constraint in self.constraints:
+			constraint.dump()
 
 class Function(NameOrderingMixin):
 	__slots__ = ("name", "owner", "language")
@@ -83,18 +92,18 @@ class Relation(NameOrderingMixin):
 		self.name, self.owner = values
 
 	def dump(self):
-		print " ", repr(type(self)).split("'")[1].split(".")[2], self.name, self.owner
+		print " ", typename(self), self.name, self.owner
 
 class ColumnRelation(Relation):
 	__slots__ = ("name", "owner", "columns")
 
 	def __init__(self, *values):
 		Relation.__init__(self, *values)
-		self.columns = []
+		self.columns = {}
 
 	def dump(self):
 		Relation.dump(self)
-		for column in self.columns:
+		for column in self.columns.itervalues():
 			column.dump()
 
 class RuleRelation(ColumnRelation):
@@ -115,22 +124,25 @@ class Index(ColumnRelation): pass
 class View(RuleRelation): pass
 
 class Table(RuleRelation):
-	__slots__ = ("name", "owner", "columns", "rules", "triggers")
+	__slots__ = ("name", "owner", "columns", "rules", "triggers", "constraints")
 
 	def __init__(self, *values):
 		RuleRelation.__init__(self, *values)
 		self.triggers = []
+		self.constraints = []
 
 	def dump(self):
 		RuleRelation.dump(self)
 		for trigger in self.triggers:
 			trigger.dump()
+		for constraint in self.constraints:
+			constraint.dump()
 
 class Column(NamedMixin):
-	__slots__ = ("name", "type", "notnull", "default")
+	__slots__ = ("parent", "name", "type", "notnull", "default")
 
 	def __init__(self, *values):
-		self.name, self.type, self.notnull, self.default = values
+		self.parent, self.name, self.type, self.notnull, self.default = values
 
 	def dump(self):
 		print "    Column", self.name, self.type,
@@ -139,6 +151,46 @@ class Column(NamedMixin):
 		if self.default:
 			print "default=" + self.default,
 		print
+
+class Constraint(NameOrderingMixin):
+	__slots__ = ("name", "definition")
+
+	def __init__(self, *values):
+		self.name, self.definition = values
+
+	def dump(self):
+		print "   ", typename(self), self.name, self.definition
+
+class CheckConstraint(Constraint): pass
+class UniqueConstraint(Constraint): pass
+
+class ColumnConstraint(Constraint):
+	__slots__ = ("name", "definition", "columns")
+
+	def __init__(self, *values):
+		self.name, self.definition, self.columns = values
+
+	def dump(self):
+		Constraint.dump(self)
+		for column in self.columns:
+			print "      Column", column
+
+class CheckColumnConstraint(ColumnConstraint): pass
+class UniqueColumnConstraint(ColumnConstraint): pass
+class PrimaryKey(ColumnConstraint): pass
+
+class ForeignKey(ColumnConstraint):
+	__slots__ = ("name", "definition", "columns", "foreign_columns")
+
+	def __init__(self, *values):
+		self.name, self.definition, self.columns, self.foreign_columns = values
+
+	def dump(self):
+		print "    ForeignKey", self.name, self.definition
+		for column in self.columns:
+			print "      Column", column
+		for column in self.foreign_columns:
+			print "      Column %s.%s" % (column.parent, column)
 
 class Trigger(NameOrderingMixin):
 	__slots__ = ("name", "function")

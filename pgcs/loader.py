@@ -104,18 +104,52 @@ def populate_schema(schema, cursor):
 		relations[oid] = relation
 		namespaces[namespace_oid].members.append(relation)
 
-	cursor.execute("""SELECT attrelid, attname, atttypid, attnotnull,
+	cursor.execute("""SELECT attrelid, attname, atttypid, attnum, attnotnull,
 	                         pg_get_expr(adbin, attrelid)
 	                  FROM pg_attribute
 	                  LEFT OUTER JOIN pg_attrdef ON attrelid = adrelid AND attnum = adnum
 	                  WHERE attnum > 0 AND NOT attisdropped
 	                  ORDER BY attrelid, attnum""")
 	for row in cursor:
-		relation_oid, name, type_oid, notnull, default = row
-		columns = relations[relation_oid].columns
-		if columns is not None:
-			column = objects.Column(name, types[type_oid], notnull, default)
-			columns.append(column)
+		relation_oid, name, type_oid, num, notnull, default = row
+		relation = relations[relation_oid]
+		if relation.columns is not None:
+			column = objects.Column(relation, name, types[type_oid], notnull, default)
+			relation.columns[num] = column
+
+	# Constraints
+
+	table_constraint_types = {
+		"c": objects.CheckColumnConstraint,
+		"u": objects.UniqueColumnConstraint,
+		"p": objects.PrimaryKey,
+	}
+
+	domain_constraint_types = {
+		"c": objects.CheckConstraint,
+		"u": objects.UniqueConstraint,
+	}
+
+	cursor.execute("""SELECT conname, contype, conrelid, contypid, confrelid, conkey, confkey,
+	                         pg_get_constraintdef(oid)
+	                  FROM pg_constraint
+	                  ORDER BY conrelid, contype, conname""")
+	for row in cursor:
+		name, kind, table_oid, domain_oid, foreign_oid, column_nums, foreign_nums, \
+			definition = row
+		if table_oid:
+			table = relations[table_oid]
+			columns = [table.columns[n] for n in column_nums]
+			if kind == "f":
+				foreign_table = relations[foreign_oid]
+				foreign_cols = [foreign_table.columns[n] for n in foreign_nums]
+				cons = objects.ForeignKey(name, definition, columns, foreign_cols)
+			else:
+				cons = table_constraint_types[kind](name, definition, columns)
+			table.constraints.append(cons)
+		else:
+			cons = domain_constraint_types[kind](name, definition)
+			types[domain_oid].constraints.append(cons)
 
 	# Functions
 	# TODO: function properties
