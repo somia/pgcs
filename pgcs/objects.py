@@ -22,10 +22,10 @@ class ContainerMixin(object):
 			member.dump()
 
 class Schema(ContainerMixin):
-	__slots__ = ("members",)
+	__slots__ = ["members"]
 
 class Language(NameOrderingMixin):
-	__slots__ = ("name", "owner")
+	__slots__ = ["name", "owner"]
 
 	def __init__(self, *values):
 		self.name, self.owner = values
@@ -34,7 +34,7 @@ class Language(NameOrderingMixin):
 		print "Language", self.name, self.owner
 
 class Namespace(NameOrderingMixin, ContainerMixin):
-	__slots__ = ("name", "owner", "members")
+	__slots__ = ["name", "owner", "members"]
 
 	def __init__(self, *values):
 		self.name, self.owner = values
@@ -45,7 +45,7 @@ class Namespace(NameOrderingMixin, ContainerMixin):
 		ContainerMixin.dump(self)
 
 class Type(NameOrderingMixin):
-	__slots__ = ("name", "owner", "notnull", "default")
+	__slots__ = ["name", "owner", "notnull", "default"]
 
 	def __init__(self, *values):
 		self.name, self.owner, self.notnull, self.default = values
@@ -57,7 +57,7 @@ class Type(NameOrderingMixin):
 		print
 
 class Domain(Type):
-	__slots__ = ("name", "owner", "notnull", "default", "basetype", "constraints")
+	__slots__ = Type.__slots__ + ["basetype", "constraints"]
 
 	def __init__(self, *values):
 		Type.__init__(self, *values)
@@ -75,7 +75,7 @@ class Domain(Type):
 			constraint.dump()
 
 class Function(NameOrderingMixin):
-	__slots__ = ("name", "owner", "language")
+	__slots__ = ["name", "owner", "language"]
 
 	def __init__(self, *values):
 		self.name, self.owner, self.language = values
@@ -84,7 +84,7 @@ class Function(NameOrderingMixin):
 		print "  Function", self.name, self.owner, self.language
 
 class Relation(NameOrderingMixin):
-	__slots__ = ("name", "owner")
+	__slots__ = ["name", "owner"]
 
 	columns = None
 
@@ -95,7 +95,7 @@ class Relation(NameOrderingMixin):
 		print " ", typename(self), self.name, self.owner
 
 class ColumnRelation(Relation):
-	__slots__ = ("name", "owner", "columns")
+	__slots__ = Relation.__slots__ + ["columns"]
 
 	def __init__(self, *values):
 		Relation.__init__(self, *values)
@@ -107,7 +107,7 @@ class ColumnRelation(Relation):
 			column.dump()
 
 class RuleRelation(ColumnRelation):
-	__slots__ = ("name", "owner", "columns", "rules")
+	__slots__ = ColumnRelation.__slots__ + ["rules"]
 
 	def __init__(self, *values):
 		ColumnRelation.__init__(self, *values)
@@ -124,7 +124,7 @@ class Index(ColumnRelation): pass
 class View(RuleRelation): pass
 
 class Table(RuleRelation):
-	__slots__ = ("name", "owner", "columns", "rules", "triggers", "constraints")
+	__slots__ = RuleRelation.__slots__ + ["triggers", "constraints"]
 
 	def __init__(self, *values):
 		RuleRelation.__init__(self, *values)
@@ -139,7 +139,7 @@ class Table(RuleRelation):
 			constraint.dump()
 
 class Column(NamedMixin):
-	__slots__ = ("parent", "name", "type", "notnull", "default")
+	__slots__ = ["parent", "name", "type", "notnull", "default"]
 
 	def __init__(self, *values):
 		self.parent, self.name, self.type, self.notnull, self.default = values
@@ -153,7 +153,7 @@ class Column(NamedMixin):
 		print
 
 class Constraint(NameOrderingMixin):
-	__slots__ = ("name", "definition")
+	__slots__ = ["name", "definition"]
 
 	def __init__(self, *values):
 		self.name, self.definition = values
@@ -165,7 +165,7 @@ class CheckConstraint(Constraint): pass
 class UniqueConstraint(Constraint): pass
 
 class ColumnConstraint(Constraint):
-	__slots__ = ("name", "definition", "columns")
+	__slots__ = Constraint.__slots__ + ["columns"]
 
 	def __init__(self, *values):
 		self.name, self.definition, self.columns = values
@@ -180,7 +180,7 @@ class UniqueColumnConstraint(ColumnConstraint): pass
 class PrimaryKey(ColumnConstraint): pass
 
 class ForeignKey(ColumnConstraint):
-	__slots__ = ("name", "definition", "columns", "foreign_columns")
+	__slots__ = ColumnConstraint.__slots__ + ["foreign_columns"]
 
 	def __init__(self, *values):
 		self.name, self.definition, self.columns, self.foreign_columns = values
@@ -193,7 +193,7 @@ class ForeignKey(ColumnConstraint):
 			print "      Column %s.%s" % (column.parent, column)
 
 class Trigger(NameOrderingMixin):
-	__slots__ = ("name", "function")
+	__slots__ = ["name", "function"]
 
 	def __init__(self, *values):
 		self.name, self.function = values
@@ -202,7 +202,7 @@ class Trigger(NameOrderingMixin):
 		print "    Trigger", self.name, self.function
 
 class Rule(NameOrderingMixin):
-	__slots__ = ("name",)
+	__slots__ = ["name"]
 
 	def __init__(self, name):
 		self.name = name
@@ -211,7 +211,7 @@ class Rule(NameOrderingMixin):
 		print "    Rule", self.name
 
 class Operator(NameOrderingMixin):
-	__slots__ = ("name", "owner")
+	__slots__ = ["name", "owner"]
 
 	def __init__(self, *values):
 		self.name, self.owner = values
@@ -220,7 +220,7 @@ class Operator(NameOrderingMixin):
 		print "  Operator", self.name, self.owner
 
 class OperatorClass(NameOrderingMixin):
-	__slots__ = ("method", "name", "owner", "intype", "default", "keytype")
+	__slots__ = ["method", "name", "owner", "intype", "default", "keytype"]
 
 	def __init__(self, *values):
 		self.method, self.name, self.owner, self.intype, self.default, self.keytype \
