@@ -29,7 +29,7 @@ def populate_schema(schema, cursor):
 	operators = {}
 	opclasses = {}
 
-	cursor.execute("""SET search_path = pg_catalog""")
+	cursor.execute("""SET search_path TO pg_catalog""")
 
 	cursor.execute("""SELECT oid, rolname
 	                  FROM pg_roles""")
