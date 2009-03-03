@@ -169,7 +169,6 @@ def populate_schema(schema, cursor):
 		namespaces[namespace_oid].members.append(function)
 
 	# Triggers
-	# TODO: constraint triggers
 	# TODO: trigger properties
 
 	cursor.execute("""SELECT tgrelid, tgname, tgfoid
