@@ -214,13 +214,13 @@ class Trigger(NameOrderingMixin):
 		print "    Trigger", self.name, self.function
 
 class Rule(NameOrderingMixin):
-	__slots__ = ["name"]
+	__slots__ = ["name", "definition"]
 
-	def __init__(self, name):
-		self.name = name
+	def __init__(self, *values):
+		self.name, self.definition = values
 
 	def dump(self):
-		print "    Rule", self.name
+		print "    Rule", self.name, self.definition
 
 class Operator(NameOrderingMixin):
 	__slots__ = ["name", "owner"]

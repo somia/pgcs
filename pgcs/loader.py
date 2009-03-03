@@ -181,15 +181,14 @@ def populate_schema(schema, cursor):
 		relations[table_oid].triggers.append(trigger)
 
 	# Rules
-	# TODO: rule properties
 
-	cursor.execute("""SELECT rulename, ev_class
+	cursor.execute("""SELECT rulename, ev_class, pg_get_ruledef(oid)
 	                  FROM pg_rewrite
                           WHERE rulename != '_RETURN'
 	                  ORDER BY ev_class, rulename""")
 	for row in cursor:
-		name, table_oid = row
-		rule = objects.Rule(name)
+		name, table_oid, definition = row
+		rule = objects.Rule(name, definition)
 		relations[table_oid].rules.append(rule)
 
 	# Operators
