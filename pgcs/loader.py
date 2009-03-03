@@ -152,19 +152,19 @@ def populate_schema(schema, cursor):
 			types[domain_oid].constraints.append(cons)
 
 	# Functions
-	# TODO: function properties
 
 	cursor.execute("""SELECT oid, proname, pronamespace, proowner, prolang, prorettype,
-	                         coalesce(proallargtypes, proargtypes)
+	                         coalesce(proallargtypes, proargtypes), prosrc, probin
 	                  FROM pg_proc
 	                  ORDER BY pronamespace, proname""")
 	for row in cursor:
-		oid, name, namespace_oid, owner_oid, language_oid, rettype_oid, argtype_oids = row
+		oid, name, namespace_oid, owner_oid, language_oid, rettype_oid, argtype_oids, \
+			source1, source2 = row
 		owner = roles[owner_oid]
 		lang = languages[language_oid]
 		rettype = types[rettype_oid]
 		argtypes = [types[oid] for oid in argtype_oids]
-		function = objects.Function(name, owner, lang, rettype, argtypes)
+		function = objects.Function(name, owner, lang, rettype, argtypes, source1, source2)
 		functions[oid] = function
 		namespaces[namespace_oid].members.append(function)
 

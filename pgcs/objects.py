@@ -75,15 +75,25 @@ class Domain(Type):
 			constraint.dump()
 
 class Function(NameOrderingMixin):
-	__slots__ = ["name", "owner", "language", "rettype", "argtypes"]
+	__slots__ = ["name", "owner", "language", "rettype", "argtypes", "source1", "source2"]
 
 	def __init__(self, *values):
-		self.name, self.owner, self.language, self.rettype, self.argtypes = values
+		self.name, self.owner, self.language, self.rettype, self.argtypes, \
+			self.source1, self.source2 = values
 
 	def dump(self):
 		print "  Function", self.name, self.owner, self.language, self.rettype
 		for type in self.argtypes:
 			print "    Type", type
+		lines = self.source1.split("\n")
+		while lines and not lines[0]:
+			del lines[0]
+		while lines and not lines[-1]:
+			del lines[-1]
+		print "    Source1", lines[0]
+		for line in lines[1:]:
+			print "           ", line
+		print "    Source2", self.source2
 
 class Relation(NameOrderingMixin):
 	__slots__ = ["name", "owner"]
