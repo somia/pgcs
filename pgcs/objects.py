@@ -205,13 +205,13 @@ class ForeignKey(ColumnConstraint):
 			print "      Column %s.%s" % (column.parent, column)
 
 class Trigger(NameOrderingMixin):
-	__slots__ = ["name", "function"]
+	__slots__ = ["name", "function", "description"]
 
 	def __init__(self, *values):
-		self.name, self.function = values
+		self.name, self.function, self.description = values
 
 	def dump(self):
-		print "    Trigger", self.name, self.function
+		print "    Trigger", self.name, self.function, self.description
 
 class Rule(NameOrderingMixin):
 	__slots__ = ["name", "definition"]
