@@ -13,6 +13,19 @@ class NameOrderingMixin(NamedMixin):
 	def __ge__(self, other): return self.name >= other.name
 	def __hash__(self): return hash(self.name)
 
+class XReferee(object):
+	__slots__ = ["xrefs"]
+
+	def __init__(self):
+		self.xrefs = set()
+
+def xref(source, target):
+	if isinstance(target, (tuple, list, set)):
+		for t in target:
+			t.xrefs.add(source)
+	elif target is not None:
+		target.xrefs.add(source)
+
 class Container(object):
 	__slots__ = ["members"]
 
@@ -25,10 +38,11 @@ class Container(object):
 
 class Schema(Container): pass
 
-class Language(NameOrderingMixin):
-	__slots__ = ["name", "owner"]
+class Language(XReferee, NameOrderingMixin):
+	__slots__ = XReferee.__slots__ + ["name", "owner"]
 
 	def __init__(self, *values):
+		XReferee.__init__(self)
 		self.name, self.owner = values
 
 	def dump(self):
@@ -45,10 +59,11 @@ class Namespace(Container, NameOrderingMixin):
 		print "Namespace", self.name, self.owner
 		Container.dump(self)
 
-class Type(NameOrderingMixin):
-	__slots__ = ["name", "owner", "notnull", "default"]
+class Type(XReferee, NameOrderingMixin):
+	__slots__ = XReferee.__slots__ + ["name", "owner", "notnull", "default"]
 
 	def __init__(self, *values):
+		XReferee.__init__(self)
 		self.name, self.owner, self.notnull, self.default = values
 
 	def dump(self):
@@ -66,6 +81,7 @@ class Domain(Type):
 
 	def init_base(self, basetype):
 		self.basetype = basetype
+		xref(self, self.basetype)
 
 	def dump(self):
 		print "  Domain", self.name, self.owner, self.basetype,
@@ -75,12 +91,17 @@ class Domain(Type):
 		for constraint in self.constraints:
 			constraint.dump()
 
-class Function(NameOrderingMixin):
-	__slots__ = ["name", "owner", "language", "rettype", "argtypes", "source1", "source2"]
+class Function(XReferee, NameOrderingMixin):
+	__slots__ = XReferee.__slots__ + ["name", "owner", "language", "rettype", "argtypes",
+	                                  "source1", "source2"]
 
 	def __init__(self, *values):
+		XReferee.__init__(self)
 		self.name, self.owner, self.language, self.rettype, self.argtypes, \
 			self.source1, self.source2 = values
+		xref(self, self.language)
+		xref(self, self.rettype)
+		xref(self, self.argtypes)
 
 	def dump(self):
 		print "  Function", self.name, self.owner, self.language, self.rettype
@@ -96,10 +117,11 @@ class Function(NameOrderingMixin):
 			print "           ", line
 		print "    Source2", self.source2
 
-class Relation(NameOrderingMixin):
-	__slots__ = ["name", "owner", "columns"]
+class Relation(XReferee, NameOrderingMixin):
+	__slots__ = XReferee.__slots__ + ["name", "owner", "columns"]
 
 	def __init__(self, *values):
+		XReferee.__init__(self)
 		self.name, self.owner = values
 		self.columns = {}
 
@@ -152,11 +174,13 @@ class Sequence(NameOrderingMixin):
 		print "  Sequence", self.name, self.owner, self.increment, self.minimum, \
 			self.maximum
 
-class Column(NamedMixin):
-	__slots__ = ["name", "type", "notnull", "default"]
+class Column(XReferee, NamedMixin):
+	__slots__ = XReferee.__slots__ + ["name", "type", "notnull", "default"]
 
 	def __init__(self, *values):
+		XReferee.__init__(self)
 		self.name, self.type, self.notnull, self.default = values
+		xref(self, self.type)
 
 	def dump(self):
 		print "    Column", self.name, self.type,
@@ -183,6 +207,7 @@ class ColumnConstraint(Constraint):
 
 	def __init__(self, *values):
 		self.name, self.definition, self.columns = values
+		xref(self, self.columns)
 
 	def dump(self):
 		Constraint.dump(self)
@@ -199,6 +224,8 @@ class ForeignKey(ColumnConstraint):
 	def __init__(self, *values):
 		self.name, self.definition, self.columns, self.foreign_table, \
 			self.foreign_columns = values
+		xref(self, self.foreign_table)
+		xref(self, self.foreign_columns)
 
 	def dump(self):
 		print "    ForeignKey", self.name, self.definition
@@ -213,6 +240,7 @@ class Trigger(NameOrderingMixin):
 
 	def __init__(self, *values):
 		self.name, self.function, self.description = values
+		xref(self, self.function)
 
 	def dump(self):
 		print "    Trigger", self.name, self.function, self.description
@@ -241,6 +269,8 @@ class OperatorClass(NameOrderingMixin):
 	def __init__(self, *values):
 		self.method, self.name, self.owner, self.intype, self.default, self.keytype \
 			= values
+		xref(self, self.intype)
+		xref(self, self.keytype)
 
 	def dump(self):
 		print "  OperatorClass", self.name, self.owner, self.intype,
