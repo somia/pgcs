@@ -153,10 +153,10 @@ class Sequence(NameOrderingMixin):
 			self.maximum
 
 class Column(NamedMixin):
-	__slots__ = ["parent", "name", "type", "notnull", "default"]
+	__slots__ = ["name", "type", "notnull", "default"]
 
 	def __init__(self, *values):
-		self.parent, self.name, self.type, self.notnull, self.default = values
+		self.name, self.type, self.notnull, self.default = values
 
 	def dump(self):
 		print "    Column", self.name, self.type,
@@ -194,17 +194,19 @@ class UniqueColumnConstraint(ColumnConstraint): pass
 class PrimaryKey(ColumnConstraint): pass
 
 class ForeignKey(ColumnConstraint):
-	__slots__ = ColumnConstraint.__slots__ + ["foreign_columns"]
+	__slots__ = ColumnConstraint.__slots__ + ["foreign_table", "foreign_columns"]
 
 	def __init__(self, *values):
-		self.name, self.definition, self.columns, self.foreign_columns = values
+		self.name, self.definition, self.columns, self.foreign_table, \
+			self.foreign_columns = values
 
 	def dump(self):
 		print "    ForeignKey", self.name, self.definition
 		for column in self.columns:
 			print "      Column", column
+		print "      Table", self.foreign_table
 		for column in self.foreign_columns:
-			print "      Column %s.%s" % (column.parent, column)
+			print "        Column %s" % column
 
 class Trigger(NameOrderingMixin):
 	__slots__ = ["name", "function", "description"]

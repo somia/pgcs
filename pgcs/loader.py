@@ -114,9 +114,8 @@ def populate_schema(schema, cursor):
 	                  ORDER BY attrelid, attnum""")
 	for row in cursor:
 		relation_oid, name, type_oid, num, notnull, default = row
-		relation = relations[relation_oid]
-		column = objects.Column(relation, name, types[type_oid], notnull, default)
-		relation.columns[num] = column
+		column = objects.Column(name, types[type_oid], notnull, default)
+		relations[relation_oid].columns[num] = column
 
 	# Sequences
 
@@ -163,7 +162,8 @@ def populate_schema(schema, cursor):
 			if kind == "f":
 				foreign_table = relations[foreign_oid]
 				foreign_cols = [foreign_table.columns[n] for n in foreign_nums]
-				cons = objects.ForeignKey(name, definition, columns, foreign_cols)
+				cons = objects.ForeignKey(name, definition, columns, foreign_table,
+				                          foreign_cols)
 			else:
 				cons = table_constraint_types[kind](name, definition, columns)
 			table.constraints.append(cons)
