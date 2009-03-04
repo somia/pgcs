@@ -96,43 +96,31 @@ class Function(NameOrderingMixin):
 		print "    Source2", self.source2
 
 class Relation(NameOrderingMixin):
-	__slots__ = ["name", "owner"]
-
-	columns = None
+	__slots__ = ["name", "owner", "columns"]
 
 	def __init__(self, *values):
 		self.name, self.owner = values
-
-	def dump(self):
-		print " ", typename(self), self.name, self.owner
-
-class ColumnRelation(Relation):
-	__slots__ = Relation.__slots__ + ["columns"]
-
-	def __init__(self, *values):
-		Relation.__init__(self, *values)
 		self.columns = {}
 
 	def dump(self):
-		Relation.dump(self)
+		print " ", typename(self), self.name, self.owner
 		for column in self.columns.itervalues():
 			column.dump()
 
-class RuleRelation(ColumnRelation):
-	__slots__ = ColumnRelation.__slots__ + ["rules"]
+class RuleRelation(Relation):
+	__slots__ = Relation.__slots__ + ["rules"]
 
 	def __init__(self, *values):
-		ColumnRelation.__init__(self, *values)
+		Relation.__init__(self, *values)
 		self.rules = []
 
 	def dump(self):
-		ColumnRelation.dump(self)
+		Relation.dump(self)
 		for rule in self.rules:
 			rule.dump()
 
-class Sequence(Relation): pass
-class Composite(ColumnRelation): pass
-class Index(ColumnRelation): pass
+class Composite(Relation): pass
+class Index(Relation): pass
 class View(RuleRelation): pass
 
 class Table(RuleRelation):
@@ -149,6 +137,19 @@ class Table(RuleRelation):
 			trigger.dump()
 		for constraint in self.constraints:
 			constraint.dump()
+
+class Sequence(NameOrderingMixin):
+	__slots__ = ["name", "owner", "increment", "minimum", "maximum"]
+
+	def __init__(self, *values):
+		self.name, self.owner = values
+
+	def init_values(self, *values):
+		self.increment, self.minimum, self.maximum = values
+
+	def dump(self):
+		print "  Sequence", self.name, self.owner, self.increment, self.minimum, \
+			self.maximum
 
 class Column(NamedMixin):
 	__slots__ = ["parent", "name", "type", "notnull", "default"]

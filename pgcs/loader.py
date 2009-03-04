@@ -16,6 +16,7 @@ def populate_schema(schema, cursor):
 	namespaces = {}
 	types = {}
 	relations = {}
+	sequences = []
 	functions = {}
 	operators = {}
 	opclasses = {}
@@ -87,7 +88,6 @@ def populate_schema(schema, cursor):
 	# Relations
 
 	relation_types = {
-		"S": objects.Sequence,
 		"c": objects.Composite,
 		"i": objects.Index,
 		"r": objects.Table,
@@ -97,6 +97,7 @@ def populate_schema(schema, cursor):
 
 	cursor.execute("""SELECT oid, relname, relowner, relnamespace, relkind
 	                  FROM pg_class
+	                  WHERE relkind != 'S'
 	                  ORDER BY relnamespace, relkind, relname""")
 	for row in cursor:
 		oid, name, owner_oid, namespace_oid, kind = row
@@ -107,15 +108,34 @@ def populate_schema(schema, cursor):
 	cursor.execute("""SELECT attrelid, attname, atttypid, attnum, attnotnull,
 	                         pg_get_expr(adbin, attrelid)
 	                  FROM pg_attribute
+	                  INNER JOIN pg_class ON attrelid = pg_class.oid
 	                  LEFT OUTER JOIN pg_attrdef ON attrelid = adrelid AND attnum = adnum
-	                  WHERE attnum > 0 AND NOT attisdropped
+	                  WHERE relkind != 'S' AND attnum > 0 AND NOT attisdropped
 	                  ORDER BY attrelid, attnum""")
 	for row in cursor:
 		relation_oid, name, type_oid, num, notnull, default = row
 		relation = relations[relation_oid]
-		if relation.columns is not None:
-			column = objects.Column(relation, name, types[type_oid], notnull, default)
-			relation.columns[num] = column
+		column = objects.Column(relation, name, types[type_oid], notnull, default)
+		relation.columns[num] = column
+
+	# Sequences
+
+	cursor.execute("""SELECT relname, relowner, relnamespace
+	                  FROM pg_class
+	                  WHERE relkind = 'S'
+	                  ORDER BY relnamespace, relname""")
+	for row in cursor:
+		name, owner_oid, namespace_oid = row
+		namespace = namespaces[namespace_oid]
+		sequence = objects.Sequence(name, roles[owner_oid])
+		full_name = '"%s"."%s"' % (namespace.name, name)
+		sequences.append((full_name, sequence))
+		namespace.members.append(sequence)
+
+	for full_name, sequence in sequences:
+		cursor.execute("""SELECT increment_by, min_value, max_value
+		                  FROM %s""" % full_name)
+		sequence.init_values(*cursor.fetchone())
 
 	# Constraints
 
