@@ -13,7 +13,9 @@ class NameOrderingMixin(NamedMixin):
 	def __ge__(self, other): return self.name >= other.name
 	def __hash__(self): return hash(self.name)
 
-class ContainerMixin(object):
+class Container(object):
+	__slots__ = ["members"]
+
 	def __init__(self):
 		self.members = []
 
@@ -21,8 +23,7 @@ class ContainerMixin(object):
 		for member in self.members:
 			member.dump()
 
-class Schema(ContainerMixin):
-	__slots__ = ["members"]
+class Schema(Container): pass
 
 class Language(NameOrderingMixin):
 	__slots__ = ["name", "owner"]
@@ -33,16 +34,16 @@ class Language(NameOrderingMixin):
 	def dump(self):
 		print "Language", self.name, self.owner
 
-class Namespace(NameOrderingMixin, ContainerMixin):
-	__slots__ = ["name", "owner", "members"]
+class Namespace(Container, NameOrderingMixin):
+	__slots__ = Container.__slots__ + ["name", "owner"]
 
 	def __init__(self, *values):
+		Container.__init__(self)
 		self.name, self.owner = values
-		self.members = []
 
 	def dump(self):
 		print "Namespace", self.name, self.owner
-		ContainerMixin.dump(self)
+		Container.dump(self)
 
 class Type(NameOrderingMixin):
 	__slots__ = ["name", "owner", "notnull", "default"]
