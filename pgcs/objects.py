@@ -5,12 +5,12 @@ class NamedMixin(object):
 	def __str__(self):
 		return self.name
 
-class TypeNameEqualityMixin(NamedMixin):
+class NameEqualityMixin(NamedMixin):
 	def __eq__(self, other):
-		return type(self) == type(other) and self.name == other.name
+		return self.name == other.name
 
 	def __ne__(self, other):
-		return type(self) != type(other) or self.name != other.name
+		return self.name != other.name
 
 	def __hash__(self):
 		return hash(self.name)
@@ -40,7 +40,7 @@ class Container(object):
 
 class Schema(Container): pass
 
-class Language(XReferee, TypeNameEqualityMixin):
+class Language(XReferee, NameEqualityMixin):
 	__slots__ = XReferee.__slots__ + ["name", "owner"]
 
 	def __init__(self, *values):
@@ -50,7 +50,7 @@ class Language(XReferee, TypeNameEqualityMixin):
 	def dump(self):
 		print "Language", self.name, self.owner
 
-class Namespace(Container, TypeNameEqualityMixin):
+class Namespace(Container, NameEqualityMixin):
 	__slots__ = Container.__slots__ + ["name", "owner"]
 
 	def __init__(self, *values):
@@ -61,7 +61,7 @@ class Namespace(Container, TypeNameEqualityMixin):
 		print "Namespace", self.name, self.owner
 		Container.dump(self)
 
-class Type(XReferee, TypeNameEqualityMixin):
+class Type(XReferee, NameEqualityMixin):
 	__slots__ = XReferee.__slots__ + ["name", "owner", "notnull", "default"]
 
 	def __init__(self, *values):
@@ -93,7 +93,7 @@ class Domain(Type):
 		for constraint in self.constraints:
 			constraint.dump()
 
-class Function(XReferee, TypeNameEqualityMixin):
+class Function(XReferee, NameEqualityMixin):
 	__slots__ = XReferee.__slots__ + ["name", "owner", "language", "rettype", "argtypes",
 	                                  "source1", "source2"]
 
@@ -119,7 +119,7 @@ class Function(XReferee, TypeNameEqualityMixin):
 			print "           ", line
 		print "    Source2", self.source2
 
-class Relation(XReferee, TypeNameEqualityMixin):
+class Relation(XReferee, NameEqualityMixin):
 	__slots__ = XReferee.__slots__ + ["name", "owner", "columns"]
 
 	def __init__(self, *values):
@@ -163,7 +163,7 @@ class Table(RuleRelation):
 		for constraint in self.constraints:
 			constraint.dump()
 
-class Sequence(TypeNameEqualityMixin):
+class Sequence(NameEqualityMixin):
 	__slots__ = ["name", "owner", "increment", "minimum", "maximum"]
 
 	def __init__(self, *values):
@@ -192,7 +192,7 @@ class Column(XReferee, NamedMixin):
 			print "default=" + self.default,
 		print
 
-class Constraint(TypeNameEqualityMixin):
+class Constraint(NameEqualityMixin):
 	__slots__ = ["name", "definition"]
 
 	def __init__(self, *values):
@@ -237,7 +237,7 @@ class ForeignKey(ColumnConstraint):
 		for column in self.foreign_columns:
 			print "        Column %s" % column
 
-class Trigger(TypeNameEqualityMixin):
+class Trigger(NameEqualityMixin):
 	__slots__ = ["name", "function", "description"]
 
 	def __init__(self, *values):
@@ -247,7 +247,7 @@ class Trigger(TypeNameEqualityMixin):
 	def dump(self):
 		print "    Trigger", self.name, self.function, self.description
 
-class Rule(TypeNameEqualityMixin):
+class Rule(NameEqualityMixin):
 	__slots__ = ["name", "definition"]
 
 	def __init__(self, *values):
@@ -256,7 +256,7 @@ class Rule(TypeNameEqualityMixin):
 	def dump(self):
 		print "    Rule", self.name, self.definition
 
-class Operator(TypeNameEqualityMixin):
+class Operator(NameEqualityMixin):
 	__slots__ = ["name", "owner"]
 
 	def __init__(self, *values):
@@ -265,7 +265,7 @@ class Operator(TypeNameEqualityMixin):
 	def dump(self):
 		print "  Operator", self.name, self.owner
 
-class OperatorClass(TypeNameEqualityMixin):
+class OperatorClass(NameEqualityMixin):
 	__slots__ = ["method", "name", "owner", "intype", "default", "keytype"]
 
 	def __init__(self, *values):
