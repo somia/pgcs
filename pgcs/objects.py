@@ -2,16 +2,18 @@ def typename(o):
 	return repr(type(o)).split("'")[1].split(".")[2]
 
 class NamedMixin(object):
-	def __str__(self): return self.name
+	def __str__(self):
+		return self.name
 
-class NameOrderingMixin(NamedMixin):
-	def __lt__(self, other): return self.name < other.name
-	def __le__(self, other): return self.name <= other.name
-	def __eq__(self, other): return self.name == other.name
-	def __ne__(self, other): return self.name != other.name
-	def __gt__(self, other): return self.name > other.name
-	def __ge__(self, other): return self.name >= other.name
-	def __hash__(self): return hash(self.name)
+class TypeNameEqualityMixin(NamedMixin):
+	def __eq__(self, other):
+		return type(self) == type(other) and self.name == other.name
+
+	def __ne__(self, other):
+		return type(self) != type(other) or self.name != other.name
+
+	def __hash__(self):
+		return hash(self.name)
 
 class XReferee(object):
 	__slots__ = ["xrefs"]
@@ -38,7 +40,7 @@ class Container(object):
 
 class Schema(Container): pass
 
-class Language(XReferee, NameOrderingMixin):
+class Language(XReferee, TypeNameEqualityMixin):
 	__slots__ = XReferee.__slots__ + ["name", "owner"]
 
 	def __init__(self, *values):
@@ -48,7 +50,7 @@ class Language(XReferee, NameOrderingMixin):
 	def dump(self):
 		print "Language", self.name, self.owner
 
-class Namespace(Container, NameOrderingMixin):
+class Namespace(Container, TypeNameEqualityMixin):
 	__slots__ = Container.__slots__ + ["name", "owner"]
 
 	def __init__(self, *values):
@@ -59,7 +61,7 @@ class Namespace(Container, NameOrderingMixin):
 		print "Namespace", self.name, self.owner
 		Container.dump(self)
 
-class Type(XReferee, NameOrderingMixin):
+class Type(XReferee, TypeNameEqualityMixin):
 	__slots__ = XReferee.__slots__ + ["name", "owner", "notnull", "default"]
 
 	def __init__(self, *values):
@@ -91,7 +93,7 @@ class Domain(Type):
 		for constraint in self.constraints:
 			constraint.dump()
 
-class Function(XReferee, NameOrderingMixin):
+class Function(XReferee, TypeNameEqualityMixin):
 	__slots__ = XReferee.__slots__ + ["name", "owner", "language", "rettype", "argtypes",
 	                                  "source1", "source2"]
 
@@ -117,7 +119,7 @@ class Function(XReferee, NameOrderingMixin):
 			print "           ", line
 		print "    Source2", self.source2
 
-class Relation(XReferee, NameOrderingMixin):
+class Relation(XReferee, TypeNameEqualityMixin):
 	__slots__ = XReferee.__slots__ + ["name", "owner", "columns"]
 
 	def __init__(self, *values):
@@ -161,7 +163,7 @@ class Table(RuleRelation):
 		for constraint in self.constraints:
 			constraint.dump()
 
-class Sequence(NameOrderingMixin):
+class Sequence(TypeNameEqualityMixin):
 	__slots__ = ["name", "owner", "increment", "minimum", "maximum"]
 
 	def __init__(self, *values):
@@ -190,7 +192,7 @@ class Column(XReferee, NamedMixin):
 			print "default=" + self.default,
 		print
 
-class Constraint(NameOrderingMixin):
+class Constraint(TypeNameEqualityMixin):
 	__slots__ = ["name", "definition"]
 
 	def __init__(self, *values):
@@ -235,7 +237,7 @@ class ForeignKey(ColumnConstraint):
 		for column in self.foreign_columns:
 			print "        Column %s" % column
 
-class Trigger(NameOrderingMixin):
+class Trigger(TypeNameEqualityMixin):
 	__slots__ = ["name", "function", "description"]
 
 	def __init__(self, *values):
@@ -245,7 +247,7 @@ class Trigger(NameOrderingMixin):
 	def dump(self):
 		print "    Trigger", self.name, self.function, self.description
 
-class Rule(NameOrderingMixin):
+class Rule(TypeNameEqualityMixin):
 	__slots__ = ["name", "definition"]
 
 	def __init__(self, *values):
@@ -254,7 +256,7 @@ class Rule(NameOrderingMixin):
 	def dump(self):
 		print "    Rule", self.name, self.definition
 
-class Operator(NameOrderingMixin):
+class Operator(TypeNameEqualityMixin):
 	__slots__ = ["name", "owner"]
 
 	def __init__(self, *values):
@@ -263,7 +265,7 @@ class Operator(NameOrderingMixin):
 	def dump(self):
 		print "  Operator", self.name, self.owner
 
-class OperatorClass(NameOrderingMixin):
+class OperatorClass(TypeNameEqualityMixin):
 	__slots__ = ["method", "name", "owner", "intype", "default", "keytype"]
 
 	def __init__(self, *values):
