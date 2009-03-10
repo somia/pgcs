@@ -41,19 +41,19 @@ def populate_schema(schema, cursor):
 		language = objects.Language(name, roles[owner_oid])
 		languages[oid] = language
 		if userdefined:
-			schema.members.append(language)
+			schema.languages.append(language)
 
-	# Namespaces
+	# namespaces
 
 	cursor.execute("""SELECT oid, nspname, nspowner
 	                  FROM pg_namespace
 	                  ORDER BY nspname""")
 	for row in cursor:
 		oid, name, owner_oid = row
-		namespace = objects.Namespace(name, roles[owner_oid])
-		namespaces[oid] = namespace
+		ns = objects.Namespace(name, roles[owner_oid])
+		namespaces[oid] = ns
 		if not name.startswith("pg_"):
-			schema.members.append(namespace)
+			schema.namespaces.append(ns)
 
 	# Types
 	# TODO: type properties
@@ -72,11 +72,12 @@ def populate_schema(schema, cursor):
 	                  WHERE typisdefined
 	                  ORDER BY typnamespace, typname""")
 	for row in cursor:
-		oid, name, namespace_oid, owner_oid, kind, notnull, default = row
-		type = type_types[kind](name, roles[owner_oid], notnull, default)
+		oid, name, ns_oid, owner_oid, kind, notnull, default = row
+		ns = namespaces[ns_oid]
+		type = type_types[kind](ns, name, roles[owner_oid], notnull, default)
 		types[oid] = type
 		if kind in "bde":
-			namespaces[namespace_oid].members.append(type)
+			ns.types.append(type)
 
 	cursor.execute("""SELECT oid, typbasetype
 	                  FROM pg_type
@@ -88,11 +89,11 @@ def populate_schema(schema, cursor):
 	# Relations
 
 	relation_types = {
-		"c": objects.Composite,
-		"i": objects.Index,
-		"r": objects.Table,
-		"t": objects.Table,
-		"v": objects.View,
+		"c": (objects.Composite, "composites"),
+		"i": (objects.Index, "indexes"),
+		"r": (objects.Table, "tables"),
+		"t": (objects.Table, "tables"),
+		"v": (objects.View, "views"),
 	}
 
 	cursor.execute("""SELECT oid, relname, relowner, relnamespace, relkind
@@ -100,10 +101,12 @@ def populate_schema(schema, cursor):
 	                  WHERE relkind != 'S'
 	                  ORDER BY relnamespace, relkind, relname""")
 	for row in cursor:
-		oid, name, owner_oid, namespace_oid, kind = row
-		relation = relation_types[kind](name, roles[owner_oid])
+		oid, name, owner_oid, ns_oid, kind = row
+		ns = namespaces[ns_oid]
+		classtype, listname = relation_types[kind]
+		relation = classtype(ns, name, roles[owner_oid])
 		relations[oid] = relation
-		namespaces[namespace_oid].members.append(relation)
+		getattr(ns, listname).append(relation)
 
 	cursor.execute("""SELECT attrelid, attname, atttypid, attnum, attnotnull,
 	                         pg_get_expr(adbin, attrelid)
@@ -124,12 +127,12 @@ def populate_schema(schema, cursor):
 	                  WHERE relkind = 'S'
 	                  ORDER BY relnamespace, relname""")
 	for row in cursor:
-		name, owner_oid, namespace_oid = row
-		namespace = namespaces[namespace_oid]
-		sequence = objects.Sequence(name, roles[owner_oid])
-		full_name = '"%s"."%s"' % (namespace.name, name)
+		name, owner_oid, ns_oid = row
+		ns = namespaces[ns_oid]
+		sequence = objects.Sequence(ns, name, roles[owner_oid])
+		full_name = '"%s"."%s"' % (ns.name, name)
 		sequences.append((full_name, sequence))
-		namespace.members.append(sequence)
+		ns.sequences.append(sequence)
 
 	for full_name, sequence in sequences:
 		cursor.execute("""SELECT increment_by, min_value, max_value
@@ -154,18 +157,16 @@ def populate_schema(schema, cursor):
 	                  FROM pg_constraint
 	                  ORDER BY conrelid, contype, conname""")
 	for row in cursor:
-		name, kind, table_oid, domain_oid, foreign_oid, column_nums, foreign_nums, \
-			definition = row
+		name, kind, table_oid, domain_oid, f_oid, col_nums, f_nums, definition = row
 		if table_oid:
 			table = relations[table_oid]
-			columns = [table.columns[n] for n in column_nums]
+			cols = [table.columns[n] for n in col_nums]
 			if kind == "f":
-				foreign_table = relations[foreign_oid]
-				foreign_cols = [foreign_table.columns[n] for n in foreign_nums]
-				cons = objects.ForeignKey(name, definition, columns, foreign_table,
-				                          foreign_cols)
+				f_table = relations[f_oid]
+				f_cols = [f_table.columns[n] for n in f_nums]
+				cons = objects.ForeignKey(name, definition, cols, f_table, f_cols)
 			else:
-				cons = table_constraint_types[kind](name, definition, columns)
+				cons = table_constraint_types[kind](name, definition, cols)
 			table.constraints.append(cons)
 		else:
 			cons = domain_constraint_types[kind](name, definition)
@@ -178,15 +179,15 @@ def populate_schema(schema, cursor):
 	                  FROM pg_proc
 	                  ORDER BY pronamespace, proname""")
 	for row in cursor:
-		oid, name, namespace_oid, owner_oid, language_oid, rettype_oid, argtype_oids, \
-			source1, source2 = row
+		oid, name, ns_oid, owner_oid, lang_oid, rettype_oid, argtype_oids, src1, src2 = row
+		ns = namespaces[ns_oid]
 		owner = roles[owner_oid]
-		lang = languages[language_oid]
+		lang = languages[lang_oid]
 		rettype = types[rettype_oid]
 		argtypes = [types[oid] for oid in argtype_oids]
-		function = objects.Function(name, owner, lang, rettype, argtypes, source1, source2)
+		function = objects.Function(ns, name, owner, lang, rettype, argtypes, src1, src2)
 		functions[oid] = function
-		namespaces[namespace_oid].members.append(function)
+		ns.functions.append(function)
 
 	# Triggers
 
@@ -218,10 +219,11 @@ def populate_schema(schema, cursor):
 	                  FROM pg_operator
 	                  ORDER BY oprnamespace, oprname""")
 	for row in cursor:
-		oid, name, namespace_oid, owner_oid = row
-		operator = objects.Operator(name, roles[owner_oid])
+		oid, name, ns_oid, owner_oid = row
+		ns = namespaces[ns_oid]
+		operator = objects.Operator(ns, name, roles[owner_oid])
 		operators[oid] = operator
-		namespaces[namespace_oid].members.append(operator)
+		ns.operators.append(operator)
 
 	cursor.execute("""SELECT pg_opclass.oid, amname, opcname, opcnamespace, opcowner,
 	                         opcintype, opcdefault, opckeytype
@@ -229,12 +231,13 @@ def populate_schema(schema, cursor):
                           WHERE opcmethod = pg_am.oid
 	                  ORDER BY opcnamespace, opcname, opcintype, amname""")
 	for row in cursor:
-		oid, method, name, namespace_oid, owner_oid, intype_oid, default, keytype_oid = row
+		oid, method, name, ns_oid, owner_oid, intype_oid, default, keytype_oid = row
+		ns = namespaces[ns_oid]
 		owner = roles[owner_oid]
 		intype = types[intype_oid]
 		keytype = types.get(keytype_oid)
-		opclass = objects.OperatorClass(method, name, owner, intype, default, keytype)
+		opclass = objects.OperatorClass(ns, method, name, owner, intype, default, keytype)
 		opclasses[oid] = opclass
-		namespaces[namespace_oid].members.append(opclass)
+		ns.opclasses.append(opclass)
 
 	# TODO: casts

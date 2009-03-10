@@ -1,44 +1,19 @@
-import contextlib
 import sys
-import threading
 
-import psycopg2
-import psycopg2.extensions
-
-from . import loader
-from . import objects
-
-class Future(object):
-	def __init__(self, call, *args):
-		self._thread = threading.Thread(target=self._run, args=(call, args))
-		self._thread.daemon = True
-		self._thread.start()
-
-	def _run(self, call, args):
-		try:
-			self._result = call(*args)
-			self._error = None
-		except Exception as e:
-			self._error = e
-
-	def get(self):
-		self._thread.join()
-		if self._error is not None:
-			raise self._error
-		return self._result
+import core.database
+import core.diff
+import html.tree
 
 def main():
-	for schema in get_schemas(sys.argv[1:]):
-		schema.dump()
+	filename = sys.argv[1]
+	sources = sys.argv[2:]
 
-def get_schemas(sources):
-	futures = [Future(get_schema, source) for source in sources]
-	return [future.get() for future in futures]
+	schemas = core.database.get_schemas(sources)
+	diff = core.diff.Schema(*schemas)
+	tree = html.tree.schema(diff)
 
-def get_schema(source):
-	with contextlib.closing(psycopg2.connect(source)) as conn:
-		conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
-		return loader.get_schema(conn)
+	with open(filename, "w") as file:
+		tree.write(file)
 
 if __name__ == "__main__":
 	main()
