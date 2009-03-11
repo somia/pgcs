@@ -20,17 +20,23 @@ class Handler(httpserver.BaseHTTPRequestHandler):
 def main():
 	global tree
 
-	conf = sys.argv[1]
-	port = int(sys.argv[2])
+	addr_str = sys.argv[1]
+	config = sys.argv[2]
 
-	with open(conf) as file:
+	with open(config) as file:
 		sources = file.readlines()
 
 	schemas = core.database.get_schemas(sources)
 	diff = core.diff.Schema(*schemas)
 	tree = html.tree.schema(diff)
 
-	server = httpserver.HTTPServer(("", port), Handler)
+	if ":" in addr_str:
+		host, port = addr_str.split(":")
+		address = host, int(port)
+	else:
+		address = "", int(addr_str)
+
+	server = httpserver.HTTPServer(address, Handler)
 
 	print "Initialized"
 
