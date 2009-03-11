@@ -1,13 +1,7 @@
 import xml.etree.ElementTree as elementtree
 
-def div(parent, cls):
-	return elementtree.SubElement(parent, "div", {"class": cls})
-
-def span(parent, cls):
-	return elementtree.SubElement(parent, "span", {"class": cls})
-
 def schema(obj):
-	root = elementtree.Element("div", {"class": "schema"})
+	root = element(None, "table", "schema")
 	named_seq(root, Language, obj.languages)
 	# TODO: named_seq(root, Namespace, obj.namespaces)
 	return elementtree.ElementTree(root)
@@ -16,26 +10,41 @@ class Language:
 	name = "language"
 
 	@staticmethod
-	def populate(e, obj):
+	def populate(table, obj):
 		if obj.owner:
-			owner = span(e, "owner")
-			span(owner, "left").text = obj.owner.left
-			span(owner, "right").text = obj.owner.right
+			row = element(table, "tr", [name, "property"])
+			element(row, "td", "key").text = "owner"
+			element(row, "td", "left").text = obj.owner.left
+			element(row, "td", "right").text = obj.owner.right
 
-def named_seq(parent, impl, seq):
-	container = div(parent, "%s-list" % impl.name)
-
+def named_seq(table, impl, seq):
 	for name, what, obj in seq:
-		item = span(container, impl.name)
+		if what != 0:
+			kind = "missing"
+		else:
+			kind = "diff"
 
-		span(item, "name").text = name
+		row = element(table, "tr", [impl.name, kind])
+		element(row, "td", "name").text = name
 
-		if what == 0:
-			desc = div(item, "diff")
-			impl.populate(desc, obj)
-		elif what < 0:
-			span(item, "left exist").text = "X"
-			span(item, "right noexist")
+		if what < 0:
+			element(row, "td", ["left", "exists"])
+			element(row, "td", ["right", "missing"])
 		elif what > 0:
-			span(item, "left noexist")
-			span(item, "right exist").text = "X"
+			element(row, "td", ["left", "missing"])
+			element(row, "td", ["right", "exists"])
+		else:
+			impl.populate(table, obj)
+
+def element(parent, tag, classes=None):
+	attribs = {}
+
+	if classes:
+		if isinstance(classes, (list, tuple, set)):
+			classes = " ".join(classes)
+		attribs["class"] = classes
+
+	if parent is None:
+		return elementtree.Element(tag, attribs)
+	else:
+		return elementtree.SubElement(parent, tag, attribs)
