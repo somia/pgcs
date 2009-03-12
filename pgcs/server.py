@@ -17,7 +17,7 @@ class Handler(httpserver.BaseHTTPRequestHandler):
 	}
 
 	rewrites = {
-		"/": "/static/index.html",
+		"/": "/static/ui.html",
 	}
 
 	def do_GET(self):
