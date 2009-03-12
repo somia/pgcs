@@ -2,13 +2,9 @@ import contextlib
 
 from . import objects
 
-def get_schema(conn):
-	schema = objects.Schema()
-
+def load_schema(schema, conn):
 	with contextlib.closing(conn.cursor()) as cursor:
 		populate_schema(schema, cursor)
-
-	return schema
 
 def populate_schema(schema, cursor):
 	roles = {}

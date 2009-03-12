@@ -1,40 +1,76 @@
 import xml.etree.ElementTree as elementtree
 
-def schema(obj):
-	root = element(None, "table", "schema")
-	named_seq(root, Language, obj.languages)
-	# TODO: named_seq(root, Namespace, obj.namespaces)
-	return elementtree.ElementTree(root)
+import pgcs.core.diff
+import pgcs.core.objects
+core = pgcs.core
 
-class Language:
-	name = "language"
+empty = ()
 
-	@staticmethod
-	def populate(table, obj):
-		if obj.owner:
-			row = element(table, "tr", [name, "property"])
-			element(row, "td", "key").text = "owner"
-			element(row, "td", "left").text = obj.owner.left
-			element(row, "td", "right").text = obj.owner.right
+def generate(obj):
+	table = element(None, "table", "schema")
+	gen_schema_head(table, obj)
+	gen_schema_body(table, obj)
+	return elementtree.ElementTree(table)
 
-def named_seq(table, impl, seq):
-	for name, what, obj in seq:
-		if what != 0:
-			kind = "missing"
-		else:
-			kind = "diff"
+def gen_schema_head(table, obj):
+	head = element(table, "thead")
+	row = element(head, "tr")
+	element(row, "th").attrib["colspan"] = "2"
+	element(element(row, "th", "left"), "div").text = obj.databases[0].name
+	element(element(row, "th", "right"), "div").text = obj.databases[1].name
 
-		row = element(table, "tr", [impl.name, kind])
-		element(row, "td", "name").text = name
+def gen_schema_body(table, obj):
+	body = element(table, "tbody")
+	gen_named_seq(body, obj.languages)
+	gen_named_seq(body, obj.namespaces)
 
-		if what < 0:
-			element(row, "td", ["left", "exists"])
-			element(row, "td", ["right", "missing"])
+def gen_value(body, obj, name):
+	if obj:
+		row = element(body, "tr", "value")
+		element(element(row, "td", "type"), "div").text = name
+		element(element(row, "td", "left"), "div").text = obj.owner.left
+		element(element(row, "td", "right"), "div").text = obj.owner.right
+
+def gen_language(body, obj):
+	gen_value(body, obj.owner, "owner")
+
+def gen_namespace(body, obj):
+	gen_value(body, obj.owner, "owner")
+	gen_named_seq(body, obj.types)
+	# TODO: ...
+
+def gen_type(body, obj):
+	gen_value(body, obj.owner, "owner")
+	# TODO: ...
+
+def gen_domain(body, obj):
+	gen_value(body, obj.owner, "owner")
+	# TODO: ...
+
+object_types = {
+	core.diff.Language:     (["language",  "diff"], gen_language),
+	core.objects.Language:  (["language",  "miss"], None),
+	core.diff.Namespace:    (["namespace", "diff"], gen_namespace),
+	core.objects.Namespace: (["namespace", "miss"], None),
+}
+
+def gen_named_seq(body, seq):
+	for name, what, obj in seq or empty:
+		classes, func = object_types[type(obj)]
+		kind, mode = classes
+
+		row = element(body, "tr", classes)
+		element(element(row, "td", "type"), "div").text = kind
+		element(element(row, "td", "name"), "div").text = name
+
+		if func:
+			func(body, obj)
+		elif what < 0:
+			element(element(row, "td", ["left", "yes"]), "div")
+			element(element(row, "td", ["right", "no"]), "div")
 		elif what > 0:
-			element(row, "td", ["left", "missing"])
-			element(row, "td", ["right", "exists"])
-		else:
-			impl.populate(table, obj)
+			element(element(row, "td", ["left", "no"]), "div")
+			element(element(row, "td", ["right", "yes"]), "div")
 
 def element(parent, tag, classes=None):
 	attribs = {}

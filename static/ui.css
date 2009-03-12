@@ -3,20 +3,57 @@
 	margin: 0;
 	padding: 0;
 	font-family: sans-serif;
+	font-size: 10pt;
 }
 
 table {
+	margin: 6pt;
 	border-collapse: collapse;
 }
 
-td.exists, td.missing {
+th {
+	font-weight: normal;
+}
+
+th div {
+	width: 24pt;
+	overflow-x: hidden;
+	font-size: 7pt;
+}
+
+tbody tr {
+	height: 12pt;
+}
+
+tbody tr:hover {
+	background-color: #eee;
+}
+
+td.type div {
+	width: 12pt;
+	font-size: 6pt;
+	margin-right: 4pt;
+	color: #ccc;
+}
+
+td.name div {
+	font-family: monospace;
+}
+
+td.yes, td.no {
 	width: 12pt;
 }
 
-td.exists {
+td.yes div, td.no div {
+	width: 10pt;
+	height: 10pt;
+	margin: auto;
+}
+
+td.yes div {
 	background-color: green;
 }
 
-td.missing {
+td.no div {
 	background-color: red;
 }

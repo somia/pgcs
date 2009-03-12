@@ -15,8 +15,8 @@ class Value(object):
 		return self.left != self.right
 
 class Schema(object):
-	@nonify
 	def __init__(self, l, r):
+		self.databases = [l.database, r.database]
 		self.languages = named_list(Language, l.languages, r.languages)
 		self.namespaces = named_list(Namespace, l.namespaces, r.namespaces)
 

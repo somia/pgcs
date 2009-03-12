@@ -62,11 +62,12 @@ def main():
 	config = sys.argv[2]
 
 	with open(config) as file:
-		sources = file.readlines()
+		for source in file:
+			core.database.register(source)
 
-	schemas = core.database.get_schemas(sources)
+	schemas = core.database.get_schemas()
 	diff = core.diff.Schema(*schemas)
-	tree = html.tree.schema(diff)
+	tree = html.tree.generate(diff)
 
 	if ":" in addr_str:
 		host, port = addr_str.split(":")
