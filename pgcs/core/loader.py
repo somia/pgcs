@@ -1,10 +1,32 @@
 import contextlib
 
+import psycopg2
+import psycopg2.extensions
+
+from . import future
 from . import objects
 
-def load_schema(schema, conn):
-	with contextlib.closing(conn.cursor()) as cursor:
-		populate_schema(schema, cursor)
+def get_schemas(sources):
+	futures = [future.Future(get_schema, source) for source in sources]
+	return [f.get() for f in futures]
+
+def get_schema(source):
+	schema = objects.Schema(get_dbname(source))
+
+	with contextlib.closing(psycopg2.connect(source)) as conn:
+		conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
+		with contextlib.closing(conn.cursor()) as cursor:
+			populate_schema(schema, cursor)
+
+	return schema
+
+def get_dbname(source):
+	for token in source.split():
+		key, value = token.split("=", 1)
+		if key == "dbname":
+			return value
+
+	raise Exception("No dbname in DSN string")
 
 def populate_schema(schema, cursor):
 	roles = {}

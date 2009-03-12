@@ -14,10 +14,10 @@ def xref(source, target):
 # Schema
 
 class Schema(object):
-	__slots__ = ["database", "languages", "namespaces"]
+	__slots__ = ["name", "languages", "namespaces"]
 
-	def __init__(self, database):
-		self.database = database
+	def __init__(self, name):
+		self.name = name
 		self.languages = []
 		self.namespaces = []
 

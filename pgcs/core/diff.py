@@ -1,28 +1,35 @@
 from . import objects
 
-class Any(object):
+class Diff(object):
+	def __init__(self, l, r):
+		self.objects = l, r
+
+	def __str__(self):
+		return str(self.objects)
+
+class AnyDiff(Diff):
 	def __nonzero__(self):
 		return any(self.__dict__.itervalues())
 
-class Value(object):
-	def __init__(self, l, r):
-		self.left, self.right = l, r
-
+class Value(Diff):
 	def __nonzero__(self):
-		return self.left != self.right
+		l, r = self.objects
+		return l != r
 
-	def __str__(self):
-		return str((self.left, self.right))
+class ObjectValue(Diff):
+	def __nonzero__(self):
+		l, r = self.objects
+		return l.get_value() != r.get_value()
 
-class ObjectValue(Value):
-	def __init__(self, l, r):
-		self.left, self.right = l.get_value(), r.get_value()
+class ObjectListValue(Diff):
+	def __nonzero__(self):
+		l, r = self.objects
+		value1 = [obj.get_value() for obj in l]
+		value2 = [obj.get_value() for obj in r]
+		return value1 != value2
 
-class ObjectListValue(Value):
-	def __init__(self, l, r):
-		l = [obj.get_value() for obj in l]
-		r = [obj.get_value() for obj in r]
-		Value.__init__(self, l, r)
+class DifferentTypes(Diff):
+	pass
 
 class NamedObjectList(list):
 	def __init__(self, seq1, seq2):
@@ -59,16 +66,11 @@ class NamedObjectList(list):
 			elif obj2:
 				self.append((name, +1, obj2))
 
-class DifferentTypes(object):
-	def __init__(self, l, r):
-		self.left, self.right = l, r
-
 # Schema
 
-class Schema(object):
+class Schema(AnyDiff):
 	def __init__(self, l, r):
-		self.databases = l.database, r.database
-
+		AnyDiff.__init__(self, l, r)
 		self.languages = NamedObjectList(l.languages, r.languages) or None
 		self.namespaces = NamedObjectList(l.namespaces, r.namespaces) or None
 
@@ -77,13 +79,13 @@ class Schema(object):
 
 # Language
 
-class Language(Any):
+class Language(AnyDiff):
 	def __init__(self, l, r):
 		self.owner = Value(l.owner, r.owner) or None
 
 # Namespace
 
-class Namespace(Any):
+class Namespace(AnyDiff):
 	def __init__(self, l, r):
 		self.owner = Value(l.owner, r.owner) or None
 		self.types = NamedObjectList(l.types, r.types) or None
@@ -98,7 +100,7 @@ class Namespace(Any):
 
 # Type
 
-class Type(Any):
+class Type(AnyDiff):
 	def __init__(self, l, r):
 		self.owner = Value(l.owner, r.owner) or None
 		self.notnull = Value(l.notnull, r.notnull) or None
@@ -112,7 +114,7 @@ class Domain(Type):
 
 # Function
 
-class Function(Any):
+class Function(AnyDiff):
 	def __init__(self, l, r):
 		self.owner = Value(l.owner, r.owner) or None
 		self.language = ObjectValue(l.language, r.language) or None
@@ -123,7 +125,7 @@ class Function(Any):
 
 # Relation
 
-class Relation(Any):
+class Relation(AnyDiff):
 	def __init__(self, l, r):
 		self.owner = Value(l.owner, r.owner) or None
 		# TODO: columns
@@ -150,7 +152,7 @@ class View(RuleRelation):
 
 # Sequence
 
-class Sequence(Any):
+class Sequence(AnyDiff):
 	def __init__(self, l, r):
 		self.owner = Value(l.owner, r.owner) or None
 		self.increment = Value(l.increment, r.increment) or None

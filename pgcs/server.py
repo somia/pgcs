@@ -3,8 +3,8 @@ import httplib
 import os
 import sys
 
-import core.database
 import core.diff
+import core.loader
 import html.tree
 
 tree = None
@@ -62,10 +62,9 @@ def main():
 	config = sys.argv[2]
 
 	with open(config) as file:
-		for source in file:
-			core.database.register(source)
+		sources = file.readlines()
 
-	schemas = core.database.get_schemas()
+	schemas = core.loader.get_schemas(sources)
 	diff = core.diff.diff_schemas(*schemas)
 	tree = html.tree.generate(diff)
 
