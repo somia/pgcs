@@ -41,9 +41,14 @@ def gen_language(body, depth, obj):
 def gen_namespace(body, depth, obj):
 	gen_value(body, depth + 1, obj.owner, "owner")
 	gen_named_seq(body, depth + 1, obj.types)
-	# TODO: ...
+	# TODO: composites
+	# TODO: indexes
+	# TODO: tables
+	# TODO: views
+	# TODO: sequences
 	gen_named_seq(body, depth + 1, obj.functions)
-	# TODO: ...
+	# TODO: operators
+	# TODO: opclasses
 
 def gen_type(body, depth, obj):
 	gen_value(body, depth + 1, obj.owner, "owner")
@@ -53,7 +58,7 @@ def gen_type(body, depth, obj):
 def gen_domain(body, depth, obj):
 	gen_type(body, depth, obj)
 	gen_value(body, depth + 1, obj.basetype, "basetype")
-	# TODO: constraints
+	# TODO: domain constraints
 
 def gen_function(body, depth, obj):
 	gen_value(body, depth + 1, obj.owner, "owner")

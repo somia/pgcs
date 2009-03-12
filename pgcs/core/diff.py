@@ -41,9 +41,14 @@ class Namespace(object):
 	def __init__(self, l, r):
 		self.owner = Value(l.owner, r.owner)
 		self.types = named_list(type_object, l.types, r.types)
-		# TODO: ...
+		# TODO: composites
+		# TODO: indexes
+		# TODO: tables
+		# TODO: views
+		# TODO: sequences
 		self.functions = named_list(Function, l.functions, r.functions)
-		# TODO: ...
+		# TODO: operators
+		# TODO: opclasses
 
 	def __nonzero__(self):
 		return bool(self.owner or self.types)
@@ -63,7 +68,8 @@ class Domain(Type):
 	def __init__(self, l, r):
 		Type.__init__(self, l, r)
 		self.basetype = ObjectValue(l.basetype, r.basetype)
-		self.constraints = None # TODO: named_list(..., l.constraints, r.constraints)
+		# TODO: domain constraints
+		self.constraints = None
 
 	def __nonzero__(self):
 		return Type.__nonzero__(self) or bool(self.basetype or self.constraints)
