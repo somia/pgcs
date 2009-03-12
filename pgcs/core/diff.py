@@ -14,6 +14,11 @@ class Value(object):
 	def __nonzero__(self):
 		return self.left != self.right
 
+class ObjectValue(Value):
+	@nonify
+	def __init__(self, l, r):
+		self.left, self.right = l.get_value(), r.get_value()
+
 class Schema(object):
 	def __init__(self, l, r):
 		self.databases = [l.database, r.database]
@@ -34,6 +39,8 @@ class Namespace(object):
 		self.owner = Value(l.owner, r.owner)
 		self.types = named_list(type_object, l.types, r.types)
 		# TODO: ...
+		self.functions = named_list(Function, l.functions, r.functions)
+		# TODO: ...
 
 	def __nonzero__(self):
 		return bool(self.owner or self.types)
@@ -52,7 +59,7 @@ class Domain(Type):
 	@nonify
 	def __init__(self, l, r):
 		Type.__init__(self, l, r)
-		self.basetype = Value(l.basetype.get_value(), r.basetype.get_value())
+		self.basetype = ObjectValue(l.basetype, r.basetype)
 		self.constraints = None # TODO: named_list(..., l.constraints, r.constraints)
 
 	def __nonzero__(self):
@@ -64,6 +71,26 @@ def type_object(l, r):
 		objects.Domain: Domain,
 	}
 	return diff_types[type(l)](l, r)
+
+class Function(object):
+	@nonify
+	def __init__(self, l, r):
+		self.owner = Value(l.owner, r.owner)
+		self.language = ObjectValue(l.language, r.language)
+		self.rettype = ObjectValue(l.rettype, r.rettype)
+		self.argtypes = value_list(l.argtypes, r.argtypes)
+		self.source1 = Value(l.source1, r.source1)
+		self.source2 = Value(l.source2, r.source2)
+
+	def __nonzero__(self):
+		return bool(self.owner or self.language or self.rettype or self.argtypes or
+		            self.source1 or self.source2)
+
+def value_list(list1, list2):
+	def get_values(seq):
+		return [obj.get_value() for obj in seq]
+
+	return Value(get_values(list1), get_values(list2))
 
 def named_list(diff_type, list1, list2):
 	diff_list = []

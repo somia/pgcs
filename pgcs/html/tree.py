@@ -21,56 +21,69 @@ def gen_schema_head(table, obj):
 
 def gen_schema_body(table, obj):
 	body = element(table, "tbody")
-	gen_named_seq(body, obj.languages)
-	gen_named_seq(body, obj.namespaces)
+	gen_named_seq(body, 0, obj.languages)
+	gen_named_seq(body, 0, obj.namespaces)
 
-def gen_value(body, obj, name):
+def gen_value(body, depth, obj, name):
 	if obj:
-		row = element(body, "tr", "value")
-		element(element(row, "td", "type"), "div").text = name
+		row = element(body, "tr", ["diff"], depth)
 		element(row, "td")
-		element(element(row, "td", "left"), "div").text = unicode(obj.left)
-		element(element(row, "td", "right"), "div").text = unicode(obj.right)
+		element(element(row, "td", "name"), "div").text = name
+		cell = element(row, "td", "diff")
+		cell.attrib["colspan"] = "2"
+		element(cell, "div")
 
-def gen_language(body, obj):
-	gen_value(body, obj.owner, "owner")
+def gen_language(body, depth, obj):
+	gen_value(body, depth + 1, obj.owner, "owner")
 
-def gen_namespace(body, obj):
-	gen_value(body, obj.owner, "owner")
-	gen_named_seq(body, obj.types)
+def gen_namespace(body, depth, obj):
+	gen_value(body, depth + 1, obj.owner, "owner")
+	gen_named_seq(body, depth + 1, obj.types)
+	# TODO: ...
+	gen_named_seq(body, depth + 1, obj.functions)
 	# TODO: ...
 
-def gen_type(body, obj):
-	gen_value(body, obj.owner, "owner")
-	gen_value(body, obj.notnull, "notnull")
-	gen_value(body, obj.default, "default")
+def gen_type(body, depth, obj):
+	gen_value(body, depth + 1, obj.owner, "owner")
+	gen_value(body, depth + 1, obj.notnull, "notnull")
+	gen_value(body, depth + 1, obj.default, "default")
 
-def gen_domain(body, obj):
-	gen_type(body, obj)
-	gen_value(body, obj.basetype, "basetype")
+def gen_domain(body, depth, obj):
+	gen_type(body, depth, obj)
+	gen_value(body, depth + 1, obj.basetype, "basetype")
+	# TODO: constraints
+
+def gen_function(body, depth, obj):
+	gen_value(body, depth + 1, obj.owner, "owner")
+	gen_value(body, depth + 1, obj.language, "language")
+	gen_value(body, depth + 1, obj.rettype, "rettype")
+	gen_value(body, depth + 1, obj.argtypes, "argtypes")
+	gen_value(body, depth + 1, obj.source1, "source1")
+	gen_value(body, depth + 1, obj.source2, "source2")
 
 object_types = {
-	core.diff.Language:     (["language",  "diff"], gen_language),
-	core.objects.Language:  (["language",  "miss"], None),
-	core.diff.Namespace:    (["namespace", "diff"], gen_namespace),
-	core.objects.Namespace: (["namespace", "miss"], None),
-	core.diff.Type:         (["type",      "diff"], gen_type),
-	core.objects.Type:      (["type",      "miss"], None),
-	core.diff.Domain:       (["domain",    "diff"], gen_domain),
-	core.objects.Domain:    (["domain",    "miss"], None),
+	core.diff.Language:     ("language",  None,   gen_language),
+	core.objects.Language:  ("language",  "miss", None),
+	core.diff.Namespace:    ("namespace", None,   gen_namespace),
+	core.objects.Namespace: ("namespace", "miss", None),
+	core.diff.Type:         ("type",      None,   gen_type),
+	core.objects.Type:      ("type",      "miss", None),
+	core.diff.Domain:       ("domain",    None,   gen_domain),
+	core.objects.Domain:    ("domain",    "miss", None),
+	core.diff.Function:     ("function",  None,   gen_function),
+	core.objects.Function:  ("function",  "miss", None),
 }
 
-def gen_named_seq(body, seq):
+def gen_named_seq(body, depth, seq):
 	for name, what, obj in seq or empty:
-		classes, func = object_types[type(obj)]
-		kind, mode = classes
+		kind, classes, func = object_types[type(obj)]
 
-		row = element(body, "tr", classes)
+		row = element(body, "tr", classes, depth)
 		element(element(row, "td", "type"), "div").text = kind
 		element(element(row, "td", "name"), "div").text = name
 
 		if func:
-			func(body, obj)
+			func(body, depth, obj)
 		elif what < 0:
 			element(element(row, "td", ["left", "yes"]), "div")
 			element(element(row, "td", ["right", "no"]), "div")
@@ -78,13 +91,21 @@ def gen_named_seq(body, seq):
 			element(element(row, "td", ["left", "no"]), "div")
 			element(element(row, "td", ["right", "yes"]), "div")
 
-def element(parent, tag, classes=None):
+def element(parent, tag, classes=None, depth=None):
 	attribs = {}
 
+	if classes and not isinstance(classes, (list, tuple, set)):
+		classes = [classes]
+
+	if depth is not None:
+		if classes:
+			classes = list(classes)
+		else:
+			classes = []
+		classes.append("depth-%d" % depth)
+
 	if classes:
-		if isinstance(classes, (list, tuple, set)):
-			classes = " ".join(classes)
-		attribs["class"] = classes
+		attribs["class"] = " ".join(classes)
 
 	if parent is None:
 		return elementtree.Element(tag, attribs)

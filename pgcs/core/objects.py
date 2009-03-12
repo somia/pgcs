@@ -30,6 +30,9 @@ class Language(XReferee):
 		XReferee.__init__(self)
 		self.name, self.owner = values
 
+	def get_value(self):
+		return self.name
+
 # Namespace
 
 class Namespace(object):
