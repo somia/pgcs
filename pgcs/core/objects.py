@@ -101,23 +101,18 @@ class Relation(XReferee):
 		self.namespace, self.name, self.owner = values
 		self.columns = {}
 
-class RuleRelation(Relation):
-	__slots__ = Relation.__slots__ + ["rules"]
-
-	def __init__(self, *values):
-		Relation.__init__(self, *values)
-		self.rules = []
-
 class Composite(Relation):
 	pass
 
 class Index(Relation):
 	pass
 
-class View(RuleRelation):
-	pass
+class RuleRelation(Relation):
+	__slots__ = Relation.__slots__ + ["rules"]
 
-# Table
+	def __init__(self, *values):
+		Relation.__init__(self, *values)
+		self.rules = []
 
 class Table(RuleRelation):
 	__slots__ = RuleRelation.__slots__ + ["triggers", "constraints"]
@@ -126,6 +121,9 @@ class Table(RuleRelation):
 		RuleRelation.__init__(self, *values)
 		self.triggers = []
 		self.constraints = []
+
+class View(RuleRelation):
+	pass
 
 # Sequence
 

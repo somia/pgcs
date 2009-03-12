@@ -25,15 +25,16 @@ def gen_schema_body(table, obj):
 	gen_named_seq(body, 0, obj.namespaces)
 
 def gen_value(body, depth, obj, name):
-	if obj:
-		row = element(body, "tr", "diff", depth)
-		element(row, "td")
-		element(element(row, "td", "name"), "div").text = name
-		cell = element(row, "td", "diff")
-		cell.attrib["colspan"] = "2"
+	row = element(body, "tr", "diff", depth)
+	element(row, "td")
+	element(element(row, "td", "name"), "div").text = name
+	cell = element(row, "td", "diff")
+	cell.attrib["colspan"] = "2"
+	content = element(cell, "div", "value")
+	content.text = unicode(obj)
 
-		content = element(cell, "div", "value")
-		content.text = unicode(obj)
+def gen_different_types(body, depth, obj, name):
+	gen_value(body, depth, diff.Value(type(obj.left), type(obj.right)), name)
 
 def gen_language(body, depth, obj):
 	gen_value(body, depth + 1, obj.owner, "owner")
@@ -69,16 +70,17 @@ def gen_function(body, depth, obj):
 	gen_value(body, depth + 1, obj.source2, "source2")
 
 object_types = {
-	core.diff.Language:     ("language",  None,   gen_language),
-	core.objects.Language:  ("language",  "miss", None),
-	core.diff.Namespace:    ("namespace", None,   gen_namespace),
-	core.objects.Namespace: ("namespace", "miss", None),
-	core.diff.Type:         ("type",      None,   gen_type),
-	core.objects.Type:      ("type",      "miss", None),
-	core.diff.Domain:       ("domain",    None,   gen_domain),
-	core.objects.Domain:    ("domain",    "miss", None),
-	core.diff.Function:     ("function",  None,   gen_function),
-	core.objects.Function:  ("function",  "miss", None),
+	core.diff.DifferentTypes: ("different-type", None,   gen_different_types),
+	core.diff.Domain:         ("domain",         None,   gen_domain),
+	core.diff.Function:       ("function",       None,   gen_function),
+	core.diff.Language:       ("language",       None,   gen_language),
+	core.diff.Namespace:      ("namespace",      None,   gen_namespace),
+	core.diff.Type:           ("type",           None,   gen_type),
+	core.objects.Domain:      ("domain",         "miss", None),
+	core.objects.Function:    ("function",       "miss", None),
+	core.objects.Language:    ("language",       "miss", None),
+	core.objects.Namespace:   ("namespace",      "miss", None),
+	core.objects.Type:        ("type",           "miss", None),
 }
 
 def gen_named_seq(body, depth, seq):

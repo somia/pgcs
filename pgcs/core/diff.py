@@ -1,13 +1,10 @@
 from . import objects
 
-# __init__ decorator which replaces created non-__nonzero__ instances with None
-def nonify(init):
-	def __init__(self, *args, **kwargs):
-		return init(self, *args, **kwargs) or None
-	return __init__
+class Any(object):
+	def __nonzero__(self):
+		return any(self.__dict__.itervalues())
 
 class Value(object):
-	@nonify
 	def __init__(self, l, r):
 		self.left, self.right = l, r
 
@@ -18,117 +15,160 @@ class Value(object):
 		return str((self.left, self.right))
 
 class ObjectValue(Value):
-	@nonify
 	def __init__(self, l, r):
 		self.left, self.right = l.get_value(), r.get_value()
 
+class ObjectListValue(Value):
+	def __init__(self, l, r):
+		l = [obj.get_value() for obj in l]
+		r = [obj.get_value() for obj in r]
+		Value.__init__(self, l, r)
+
+class NamedObjectList(list):
+	def __init__(self, seq1, seq2):
+		list.__init__(self)
+
+		names = set()
+
+		def map(seq):
+			map = {}
+			for obj in seq:
+				names.add(obj.name)
+				map[obj.name] = obj
+			return map
+
+		map1 = map(seq1)
+		map2 = map(seq2)
+
+		for name in sorted(names):
+			obj1 = map1.get(name)
+			obj2 = map2.get(name)
+
+			if obj1 and obj2:
+				if type(obj1) != type(obj2):
+					diff = DifferentTypes(obj1, obj2)
+				else:
+					diff = diff_types[type(obj1)](obj1, obj2)
+
+				if diff:
+					self.append((name, 0, diff))
+
+			elif obj1:
+				self.append((name, -1, obj1))
+
+			elif obj2:
+				self.append((name, +1, obj2))
+
+class DifferentTypes(object):
+	def __init__(self, l, r):
+		self.left, self.right = l, r
+
+# Schema
+
 class Schema(object):
 	def __init__(self, l, r):
-		self.databases = [l.database, r.database]
-		self.languages = named_list(Language, l.languages, r.languages)
-		self.namespaces = named_list(Namespace, l.namespaces, r.namespaces)
+		self.databases = l.database, r.database
 
-class Language(object):
-	@nonify
-	def __init__(self, l, r):
-		self.owner = Value(l.owner, r.owner)
+		self.languages = NamedObjectList(l.languages, r.languages) or None
+		self.namespaces = NamedObjectList(l.namespaces, r.namespaces) or None
 
 	def __nonzero__(self):
-		return bool(self.owner)
+		return bool(self.languages or self.namespaces)
 
-class Namespace(object):
-	@nonify
+# Language
+
+class Language(Any):
 	def __init__(self, l, r):
-		self.owner = Value(l.owner, r.owner)
-		self.types = named_list(type_object, l.types, r.types)
-		# TODO: composites
-		# TODO: indexes
-		# TODO: tables
-		# TODO: views
-		# TODO: sequences
-		self.functions = named_list(Function, l.functions, r.functions)
+		self.owner = Value(l.owner, r.owner) or None
+
+# Namespace
+
+class Namespace(Any):
+	def __init__(self, l, r):
+		self.owner = Value(l.owner, r.owner) or None
+		self.types = NamedObjectList(l.types, r.types) or None
+		self.composites = NamedObjectList(l.composites, r.composites) or None
+		self.indexes = NamedObjectList(l.indexes, r.indexes) or None
+		self.tables = NamedObjectList(l.tables, r.tables) or None
+		self.views = NamedObjectList(l.views, r.views) or None
+		self.sequences = NamedObjectList(l.sequences, r.sequences) or None
+		self.functions = NamedObjectList(l.functions, r.functions) or None
 		# TODO: operators
 		# TODO: opclasses
 
-	def __nonzero__(self):
-		return bool(self.owner or self.types)
+# Type
 
-class Type(object):
-	@nonify
+class Type(Any):
 	def __init__(self, l, r):
-		self.owner = Value(l.owner, r.owner)
-		self.notnull = Value(l.notnull, r.notnull)
-		self.default = Value(l.default, r.default)
-
-	def __nonzero__(self):
-		return bool(self.owner or self.notnull or self.default)
+		self.owner = Value(l.owner, r.owner) or None
+		self.notnull = Value(l.notnull, r.notnull) or None
+		self.default = Value(l.default, r.default) or None
 
 class Domain(Type):
-	@nonify
 	def __init__(self, l, r):
 		Type.__init__(self, l, r)
-		self.basetype = ObjectValue(l.basetype, r.basetype)
+		self.basetype = ObjectValue(l.basetype, r.basetype) or None
 		# TODO: domain constraints
-		self.constraints = None
 
-	def __nonzero__(self):
-		return Type.__nonzero__(self) or bool(self.basetype or self.constraints)
+# Function
 
-def type_object(l, r):
-	diff_types = {
-		objects.Type: Type,
-		objects.Domain: Domain,
-	}
-	return diff_types[type(l)](l, r)
-
-class Function(object):
-	@nonify
+class Function(Any):
 	def __init__(self, l, r):
-		self.owner = Value(l.owner, r.owner)
-		self.language = ObjectValue(l.language, r.language)
-		self.rettype = ObjectValue(l.rettype, r.rettype)
-		self.argtypes = value_list(l.argtypes, r.argtypes)
-		self.source1 = Value(l.source1, r.source1)
-		self.source2 = Value(l.source2, r.source2)
+		self.owner = Value(l.owner, r.owner) or None
+		self.language = ObjectValue(l.language, r.language) or None
+		self.rettype = ObjectValue(l.rettype, r.rettype) or None
+		self.argtypes = ObjectListValue(l.argtypes, r.argtypes) or None
+		self.source1 = Value(l.source1, r.source1) or None
+		self.source2 = Value(l.source2, r.source2) or None
 
-	def __nonzero__(self):
-		return bool(self.owner or self.language or self.rettype or self.argtypes or
-		            self.source1 or self.source2)
+# Relation
 
-def value_list(list1, list2):
-	def get_values(seq):
-		return [obj.get_value() for obj in seq]
+class Relation(Any):
+	def __init__(self, l, r):
+		self.owner = Value(l.owner, r.owner) or None
+		# TODO: columns
 
-	return Value(get_values(list1), get_values(list2))
+class Composite(Relation):
+	pass
 
-def named_list(diff_type, list1, list2):
-	diff_list = []
-	keys = set()
+class Index(Relation):
+	pass
 
-	def make_map(seq):
-		map = {}
-		for obj in seq:
-			key = type(obj), obj.name
-			keys.add(key)
-			map[key] = obj
-		return map
+class RuleRelation(Relation):
+	def __init__(self, l, r):
+		Relation.__init__(self, l, r)
+		# TODO: rules
 
-	map1 = make_map(list1)
-	map2 = make_map(list2)
+class Table(RuleRelation):
+	def __init__(self, l, r):
+		RuleRelation.__init__(self, l, r)
+		# TODO: triggers
+		# TODO: table constraints
 
-	for key in sorted(keys):
-		obj1 = map1.get(key)
-		obj2 = map2.get(key)
+class View(RuleRelation):
+	pass
 
-		name = key[1]
+# Sequence
 
-		if obj1 and obj2:
-			diff = diff_type(obj1, obj2)
-			if diff:
-				diff_list.append((name, 0, diff))
-		elif obj1:
-			diff_list.append((name, -1, obj1))
-		elif obj2:
-			diff_list.append((name, +1, obj2))
+class Sequence(Any):
+	def __init__(self, l, r):
+		self.owner = Value(l.owner, r.owner) or None
+		self.increment = Value(l.increment, r.increment) or None
+		self.minimum = Value(l.minimum, r.minimum) or None
+		self.maximum = Value(l.maximum, r.maximum) or None
 
-	return diff_list or None
+diff_types = {
+	objects.Composite: Composite,
+	objects.Domain: Domain,
+	objects.Function: Function,
+	objects.Index: Index,
+	objects.Language: Language,
+	objects.Namespace: Namespace,
+	objects.Sequence: Sequence,
+	objects.Table: Table,
+	objects.Type: Type,
+	objects.View: View,
+}
+
+def diff_schemas(*schemas):
+	return Schema(*schemas)

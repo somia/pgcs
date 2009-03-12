@@ -66,7 +66,7 @@ def main():
 			core.database.register(source)
 
 	schemas = core.database.get_schemas()
-	diff = core.diff.Schema(*schemas)
+	diff = core.diff.diff_schemas(*schemas)
 	tree = html.tree.generate(diff)
 
 	if ":" in addr_str:
