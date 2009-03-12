@@ -28,8 +28,9 @@ def gen_value(body, obj, name):
 	if obj:
 		row = element(body, "tr", "value")
 		element(element(row, "td", "type"), "div").text = name
-		element(element(row, "td", "left"), "div").text = obj.owner.left
-		element(element(row, "td", "right"), "div").text = obj.owner.right
+		element(row, "td")
+		element(element(row, "td", "left"), "div").text = unicode(obj.left)
+		element(element(row, "td", "right"), "div").text = unicode(obj.right)
 
 def gen_language(body, obj):
 	gen_value(body, obj.owner, "owner")
@@ -41,17 +42,22 @@ def gen_namespace(body, obj):
 
 def gen_type(body, obj):
 	gen_value(body, obj.owner, "owner")
-	# TODO: ...
+	gen_value(body, obj.notnull, "notnull")
+	gen_value(body, obj.default, "default")
 
 def gen_domain(body, obj):
-	gen_value(body, obj.owner, "owner")
-	# TODO: ...
+	gen_type(body, obj)
+	gen_value(body, obj.basetype, "basetype")
 
 object_types = {
 	core.diff.Language:     (["language",  "diff"], gen_language),
 	core.objects.Language:  (["language",  "miss"], None),
 	core.diff.Namespace:    (["namespace", "diff"], gen_namespace),
 	core.objects.Namespace: (["namespace", "miss"], None),
+	core.diff.Type:         (["type",      "diff"], gen_type),
+	core.objects.Type:      (["type",      "miss"], None),
+	core.diff.Domain:       (["domain",    "diff"], gen_domain),
+	core.objects.Domain:    (["domain",    "miss"], None),
 }
 
 def gen_named_seq(body, seq):

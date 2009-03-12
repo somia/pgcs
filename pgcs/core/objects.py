@@ -58,7 +58,7 @@ class Type(XReferee):
 		self.namespace, self.name, self.owner, self.notnull, self.default = values
 
 	def get_value(self):
-		return self.namespace, self.name
+		return self.namespace.name, self.name
 
 class Domain(Type):
 	__slots__ = Type.__slots__ + ["basetype", "constraints"]
@@ -86,7 +86,7 @@ class Function(XReferee):
 		xref(self, self.argtypes)
 
 	def get_value(self):
-		return self.namespace, self.name
+		return self.namespace.name, self.name
 
 # Relation
 

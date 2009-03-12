@@ -53,7 +53,7 @@ class Domain(Type):
 	def __init__(self, l, r):
 		Type.__init__(self, l, r)
 		self.basetype = Value(l.basetype.get_value(), r.basetype.get_value())
-		# TODO: self.constraints = named_list(..., l.constraints, r.constraints)
+		self.constraints = None # TODO: named_list(..., l.constraints, r.constraints)
 
 	def __nonzero__(self):
 		return Type.__nonzero__(self) or bool(self.basetype or self.constraints)
