@@ -36,7 +36,7 @@ class Namespace(object):
 		# TODO: ...
 
 	def __nonzero__(self):
-		return bool(self.owner and self.types)
+		return bool(self.owner or self.types)
 
 class Type(object):
 	@nonify
@@ -46,7 +46,7 @@ class Type(object):
 		self.default = Value(l.default, r.default)
 
 	def __nonzero__(self):
-		return bool(self.owner and self.notnull and self.default)
+		return bool(self.owner or self.notnull or self.default)
 
 class Domain(Type):
 	@nonify
@@ -56,7 +56,7 @@ class Domain(Type):
 		# TODO: self.constraints = named_list(..., l.constraints, r.constraints)
 
 	def __nonzero__(self):
-		return Type.__nonzero__(self) and bool(self.basetype and self.constraints)
+		return Type.__nonzero__(self) or bool(self.basetype or self.constraints)
 
 def type_object(l, r):
 	diff_types = {
