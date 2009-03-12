@@ -1,11 +1,18 @@
 import contextlib
+import sys
 import threading
+import traceback
 
 import psycopg2
 import psycopg2.extensions
 
 from . import loader
 from . import objects
+
+class FutureError(Exception):
+	def __init__(self, exception):
+		Exception.__init__(self)
+		self.exception = exception
 
 class Future(object):
 	def __init__(self, call, *args):
@@ -17,13 +24,14 @@ class Future(object):
 		try:
 			self._result = call(*args)
 			self._error = None
-		except Exception as e:
-			self._error = e
+		except:
+			exctype, self._error, trace = sys.exc_info()
+			traceback.print_exception(exctype, self._error, trace)
 
 	def get(self):
 		self._thread.join()
 		if self._error is not None:
-			raise self._error
+			raise FutureError(self._error)
 		return self._result
 
 class Database(object):
