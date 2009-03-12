@@ -4,8 +4,6 @@ import pgcs.core.data
 import pgcs.core.diff
 core = pgcs.core
 
-empty = ()
-
 def generate(diff):
 	table = element(None, "table", "database")
 	gen_database_head(table, diff)
@@ -84,7 +82,7 @@ object_types = {
 }
 
 def gen_named_seq(body, depth, seq):
-	for name, what, obj in seq or empty:
+	for name, what, obj in seq or ():
 		kind, classes, func = object_types[type(obj)]
 
 		row = element(body, "tr", classes, depth)
