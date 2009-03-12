@@ -1,5 +1,8 @@
 from . import data
 
+def get_value(obj):
+	return obj and obj.get_value()
+
 class Diff(object):
 	def __init__(self, l, r):
 		self.objects = l, r
@@ -19,13 +22,13 @@ class Value(Diff):
 class ObjectValue(Diff):
 	def __nonzero__(self):
 		l, r = self.objects
-		return l.get_value() != r.get_value()
+		return get_value(l) != get_value(r)
 
 class ObjectListValue(Diff):
 	def __nonzero__(self):
 		l, r = self.objects
-		value1 = [obj.get_value() for obj in l]
-		value2 = [obj.get_value() for obj in r]
+		value1 = [get_value(obj) for obj in l]
+		value2 = [get_value(obj) for obj in r]
 		return value1 != value2
 
 class DifferentTypes(Diff):
@@ -66,6 +69,11 @@ class NamedObjectList(list):
 			elif obj2:
 				self.append((name, +1, obj2))
 
+class OrderedObjectList(list):
+	def __init__(self, seq1, seq2):
+		list.__init__(self)
+		# TODO: ...
+
 # Database
 
 class Database(AnyDiff):
@@ -81,12 +89,14 @@ class Database(AnyDiff):
 
 class Language(AnyDiff):
 	def __init__(self, l, r):
+		AnyDiff.__init__(self, l, r)
 		self.owner = Value(l.owner, r.owner) or None
 
 # Namespace
 
 class Namespace(AnyDiff):
 	def __init__(self, l, r):
+		AnyDiff.__init__(self, l, r)
 		self.owner = Value(l.owner, r.owner) or None
 		self.types = NamedObjectList(l.types, r.types) or None
 		self.composites = NamedObjectList(l.composites, r.composites) or None
@@ -95,13 +105,14 @@ class Namespace(AnyDiff):
 		self.views = NamedObjectList(l.views, r.views) or None
 		self.sequences = NamedObjectList(l.sequences, r.sequences) or None
 		self.functions = NamedObjectList(l.functions, r.functions) or None
-		# TODO: operators
-		# TODO: opclasses
+		self.operators = NamedObjectList(l.operators, r.operators) or None
+		self.opclasses = NamedObjectList(l.opclasses, r.opclasses) or None
 
 # Type
 
 class Type(AnyDiff):
 	def __init__(self, l, r):
+		AnyDiff.__init__(self, l, r)
 		self.owner = Value(l.owner, r.owner) or None
 		self.notnull = Value(l.notnull, r.notnull) or None
 		self.default = Value(l.default, r.default) or None
@@ -116,6 +127,7 @@ class Domain(Type):
 
 class Function(AnyDiff):
 	def __init__(self, l, r):
+		AnyDiff.__init__(self, l, r)
 		self.owner = Value(l.owner, r.owner) or None
 		self.language = ObjectValue(l.language, r.language) or None
 		self.rettype = ObjectValue(l.rettype, r.rettype) or None
@@ -127,8 +139,12 @@ class Function(AnyDiff):
 
 class Relation(AnyDiff):
 	def __init__(self, l, r):
+		def values(map):
+			return [map[i] for i in sorted(map)]
+
+		AnyDiff.__init__(self, l, r)
 		self.owner = Value(l.owner, r.owner) or None
-		# TODO: columns
+		self.columns = OrderedObjectList(values(l.columns), values(r.columns)) or None
 
 class Composite(Relation):
 	pass
@@ -154,18 +170,46 @@ class View(RuleRelation):
 
 class Sequence(AnyDiff):
 	def __init__(self, l, r):
+		AnyDiff.__init__(self, l, r)
 		self.owner = Value(l.owner, r.owner) or None
 		self.increment = Value(l.increment, r.increment) or None
 		self.minimum = Value(l.minimum, r.minimum) or None
 		self.maximum = Value(l.maximum, r.maximum) or None
 
+# Column
+
+class Column(AnyDiff):
+	def __init__(self, l, r):
+		AnyDiff.__init__(self, l, r)
+		self.type = ObjectValue(l.type, r.type) or None
+		self.notnull = Value(l.notnull, r.notnull) or None
+		self.default = Value(l.default, r.default) or None
+
+# Operator
+
+class Operator(AnyDiff):
+	def __init__(self, l, r):
+		AnyDiff.__init__(self, l, r)
+		self.owner = Value(l.owner, r.owner) or None
+
+class OperatorClass(AnyDiff):
+	def __init__(self, l, r):
+		AnyDiff.__init__(self, l, r)
+		self.owner = Value(l.owner, r.owner) or None
+		self.intype = ObjectValue(l.intype, r.intype) or None
+		self.default = Value(l.default, r.default) or None
+		self.keytype = ObjectValue(l.keytype, r.keytype) or None
+
 diff_types = {
+	data.Column: Column,
 	data.Composite: Composite,
 	data.Domain: Domain,
 	data.Function: Function,
 	data.Index: Index,
 	data.Language: Language,
 	data.Namespace: Namespace,
+	data.Operator: Operator,
+	data.OperatorClass: OperatorClass,
 	data.Sequence: Sequence,
 	data.Table: Table,
 	data.Type: Type,

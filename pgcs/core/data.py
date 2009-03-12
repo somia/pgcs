@@ -59,6 +59,9 @@ class Namespace(object):
 		self.operators = []
 		self.opclasses = []
 
+	def get_value(self):
+		return self.name
+
 # Type
 
 class Type(XReferee):
@@ -109,6 +112,9 @@ class Relation(XReferee):
 		self.namespace, self.name, self.owner = values
 		self.columns = {}
 
+	def get_value(self):
+		return self.namespace.name, self.name
+
 class Composite(Relation):
 	pass
 
@@ -144,6 +150,9 @@ class Sequence(object):
 	def init_values(self, *values):
 		self.increment, self.minimum, self.maximum = values
 
+	def get_value(self):
+		return self.namespace.name, self.name
+
 # Column
 
 class Column(XReferee):
@@ -154,6 +163,9 @@ class Column(XReferee):
 		self.name, self.type, self.notnull, self.default = values
 		xref(self, self.type)
 
+	def get_value(self):
+		return self.name
+
 # Constraint
 
 class Constraint(object):
@@ -161,6 +173,9 @@ class Constraint(object):
 
 	def __init__(self, *values):
 		self.name, self.definition = values
+
+	def get_value(self):
+		return self.name
 
 class CheckConstraint(Constraint):
 	pass
@@ -193,11 +208,6 @@ class ForeignKey(ColumnConstraint):
 		xref(self, self.foreign_table)
 		xref(self, self.foreign_columns)
 
-	def get_value(self, name):
-		return [
-			
-		]
-
 # Trigger
 
 class Trigger(object):
@@ -207,6 +217,9 @@ class Trigger(object):
 		self.name, self.function, self.description = values
 		xref(self, self.function)
 
+	def get_value(self):
+		return self.name
+
 # Rule
 
 class Rule(object):
@@ -214,6 +227,9 @@ class Rule(object):
 
 	def __init__(self, *values):
 		self.name, self.definition = values
+
+	def get_value(self):
+		return self.name
 
 # Operator
 
@@ -223,6 +239,9 @@ class Operator(object):
 	def __init__(self, *values):
 		self.namespace, self.name, self.owner = values
 
+	def get_value(self):
+		return self.namespace.name, self.name
+
 class OperatorClass(object):
 	__slots__ = ["namespace", "method", "name", "owner", "intype", "default", "keytype"]
 
@@ -231,3 +250,6 @@ class OperatorClass(object):
 			self.keytype = values
 		xref(self, self.intype)
 		xref(self, self.keytype)
+
+	def get_value(self):
+		return self.namespace.name, self.method, self.name
