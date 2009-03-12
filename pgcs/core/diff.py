@@ -1,4 +1,4 @@
-from . import objects
+from . import data
 
 class Diff(object):
 	def __init__(self, l, r):
@@ -66,9 +66,9 @@ class NamedObjectList(list):
 			elif obj2:
 				self.append((name, +1, obj2))
 
-# Schema
+# Database
 
-class Schema(AnyDiff):
+class Database(AnyDiff):
 	def __init__(self, l, r):
 		AnyDiff.__init__(self, l, r)
 		self.languages = NamedObjectList(l.languages, r.languages) or None
@@ -160,17 +160,17 @@ class Sequence(AnyDiff):
 		self.maximum = Value(l.maximum, r.maximum) or None
 
 diff_types = {
-	objects.Composite: Composite,
-	objects.Domain: Domain,
-	objects.Function: Function,
-	objects.Index: Index,
-	objects.Language: Language,
-	objects.Namespace: Namespace,
-	objects.Sequence: Sequence,
-	objects.Table: Table,
-	objects.Type: Type,
-	objects.View: View,
+	data.Composite: Composite,
+	data.Domain: Domain,
+	data.Function: Function,
+	data.Index: Index,
+	data.Language: Language,
+	data.Namespace: Namespace,
+	data.Sequence: Sequence,
+	data.Table: Table,
+	data.Type: Type,
+	data.View: View,
 }
 
-def diff_schemas(*schemas):
-	return Schema(*schemas)
+def diff_databases(*objects):
+	return Database(*objects)

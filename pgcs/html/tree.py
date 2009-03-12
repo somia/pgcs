@@ -1,25 +1,25 @@
 import xml.etree.ElementTree as elementtree
 
+import pgcs.core.data
 import pgcs.core.diff
-import pgcs.core.objects
 core = pgcs.core
 
 empty = ()
 
 def generate(diff):
-	table = element(None, "table", "schema")
-	gen_schema_head(table, diff)
-	gen_schema_body(table, diff)
+	table = element(None, "table", "database")
+	gen_database_head(table, diff)
+	gen_database_body(table, diff)
 	return elementtree.ElementTree(table)
 
-def gen_schema_head(table, diff):
+def gen_database_head(table, diff):
 	head = element(table, "thead")
 	row = element(head, "tr")
 	element(row, "th").attrib["colspan"] = "2"
-	element(element(row, "th", "left"), "div").text = diff.objects[0].name
-	element(element(row, "th", "right"), "div").text = diff.objects[1].name
+	element(element(row, "th", "left"), "div").text = diff.objects[0].get_name()
+	element(element(row, "th", "right"), "div").text = diff.objects[1].get_name()
 
-def gen_schema_body(table, diff):
+def gen_database_body(table, diff):
 	body = element(table, "tbody")
 	gen_named_seq(body, 0, diff.languages)
 	gen_named_seq(body, 0, diff.namespaces)
@@ -76,11 +76,11 @@ object_types = {
 	core.diff.Language:       ("language",       None,   gen_language),
 	core.diff.Namespace:      ("namespace",      None,   gen_namespace),
 	core.diff.Type:           ("type",           None,   gen_type),
-	core.objects.Domain:      ("domain",         "miss", None),
-	core.objects.Function:    ("function",       "miss", None),
-	core.objects.Language:    ("language",       "miss", None),
-	core.objects.Namespace:   ("namespace",      "miss", None),
-	core.objects.Type:        ("type",           "miss", None),
+	core.data.Domain:         ("domain",         "miss", None),
+	core.data.Function:       ("function",       "miss", None),
+	core.data.Language:       ("language",       "miss", None),
+	core.data.Namespace:      ("namespace",      "miss", None),
+	core.data.Type:           ("type",           "miss", None),
 }
 
 def gen_named_seq(body, depth, seq):

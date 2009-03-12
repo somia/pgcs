@@ -11,15 +11,23 @@ def xref(source, target):
 	elif target is not None:
 		target.xrefs.add(source)
 
-# Schema
+# Database
 
-class Schema(object):
-	__slots__ = ["name", "languages", "namespaces"]
+class Database(object):
+	__slots__ = ["source", "languages", "namespaces"]
 
-	def __init__(self, name):
-		self.name = name
+	def __init__(self, source):
+		self.source = source
 		self.languages = []
 		self.namespaces = []
+
+	def get_name(self):
+		for token in self.source.split():
+			key, value = token.split("=", 1)
+			if key == "dbname":
+				return value
+
+		raise Exception("No dbname in DSN string")
 
 # Language
 

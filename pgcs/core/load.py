@@ -3,32 +3,24 @@ import contextlib
 import psycopg2
 import psycopg2.extensions
 
+from . import data
 from . import future
-from . import objects
 
-def get_schemas(sources):
-	futures = [future.Future(get_schema, source) for source in sources]
+def load_databases(sources):
+	futures = [future.Future(load_database, s) for s in sources]
 	return [f.get() for f in futures]
 
-def get_schema(source):
-	schema = objects.Schema(get_dbname(source))
+def load_database(source):
+	db = data.Database(source)
 
 	with contextlib.closing(psycopg2.connect(source)) as conn:
 		conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
 		with contextlib.closing(conn.cursor()) as cursor:
-			populate_schema(schema, cursor)
+			populate_database(db, cursor)
 
-	return schema
+	return db
 
-def get_dbname(source):
-	for token in source.split():
-		key, value = token.split("=", 1)
-		if key == "dbname":
-			return value
-
-	raise Exception("No dbname in DSN string")
-
-def populate_schema(schema, cursor):
+def populate_database(db, cursor):
 	roles = {}
 	languages = {}
 	namespaces = {}
@@ -56,10 +48,10 @@ def populate_schema(schema, cursor):
 	                  ORDER BY lanname""")
 	for row in cursor:
 		oid, name, owner_oid, userdefined = row
-		language = objects.Language(name, roles[owner_oid])
+		language = data.Language(name, roles[owner_oid])
 		languages[oid] = language
 		if userdefined:
-			schema.languages.append(language)
+			db.languages.append(language)
 
 	# namespaces
 
@@ -68,20 +60,20 @@ def populate_schema(schema, cursor):
 	                  ORDER BY nspname""")
 	for row in cursor:
 		oid, name, owner_oid = row
-		ns = objects.Namespace(name, roles[owner_oid])
+		ns = data.Namespace(name, roles[owner_oid])
 		namespaces[oid] = ns
 		if not name.startswith("pg_"):
-			schema.namespaces.append(ns)
+			db.namespaces.append(ns)
 
 	# Types
 	# TODO: type properties
 
 	type_types = {
-		"b": objects.Type,
-		"c": objects.Type, # composite
-		"d": objects.Domain,
-		"e": objects.Type, # enum
-		"p": objects.Type, # pseudo
+		"b": data.Type,
+		"c": data.Type, # composite
+		"d": data.Domain,
+		"e": data.Type, # enum
+		"p": data.Type, # pseudo
 	}
 
 	cursor.execute("""SELECT oid, typname, typnamespace, typowner, typtype, typnotnull,
@@ -107,11 +99,11 @@ def populate_schema(schema, cursor):
 	# Relations
 
 	relation_types = {
-		"c": (objects.Composite, "composites"),
-		"i": (objects.Index, "indexes"),
-		"r": (objects.Table, "tables"),
-		"t": (objects.Table, "tables"),
-		"v": (objects.View, "views"),
+		"c": (data.Composite, "composites"),
+		"i": (data.Index, "indexes"),
+		"r": (data.Table, "tables"),
+		"t": (data.Table, "tables"),
+		"v": (data.View, "views"),
 	}
 
 	cursor.execute("""SELECT oid, relname, relowner, relnamespace, relkind
@@ -135,7 +127,7 @@ def populate_schema(schema, cursor):
 	                  ORDER BY attrelid, attnum""")
 	for row in cursor:
 		relation_oid, name, type_oid, num, notnull, default = row
-		column = objects.Column(name, types[type_oid], notnull, default)
+		column = data.Column(name, types[type_oid], notnull, default)
 		relations[relation_oid].columns[num] = column
 
 	# Sequences
@@ -147,7 +139,7 @@ def populate_schema(schema, cursor):
 	for row in cursor:
 		name, owner_oid, ns_oid = row
 		ns = namespaces[ns_oid]
-		sequence = objects.Sequence(ns, name, roles[owner_oid])
+		sequence = data.Sequence(ns, name, roles[owner_oid])
 		full_name = '"%s"."%s"' % (ns.name, name)
 		sequences.append((full_name, sequence))
 		ns.sequences.append(sequence)
@@ -167,14 +159,14 @@ def populate_schema(schema, cursor):
 	# Constraints
 
 	table_constraint_types = {
-		"c": objects.CheckColumnConstraint,
-		"u": objects.UniqueColumnConstraint,
-		"p": objects.PrimaryKey,
+		"c": data.CheckColumnConstraint,
+		"u": data.UniqueColumnConstraint,
+		"p": data.PrimaryKey,
 	}
 
 	domain_constraint_types = {
-		"c": objects.CheckConstraint,
-		"u": objects.UniqueConstraint,
+		"c": data.CheckConstraint,
+		"u": data.UniqueConstraint,
 	}
 
 	cursor.execute("""SELECT conname, contype, conrelid, contypid, confrelid, conkey, confkey,
@@ -189,7 +181,7 @@ def populate_schema(schema, cursor):
 			if kind == "f":
 				f_table = relations[f_oid]
 				f_cols = [f_table.columns[n] for n in f_nums]
-				cons = objects.ForeignKey(name, definition, cols, f_table, f_cols)
+				cons = data.ForeignKey(name, definition, cols, f_table, f_cols)
 			else:
 				cons = table_constraint_types[kind](name, definition, cols)
 			table.constraints.append(cons)
@@ -210,7 +202,7 @@ def populate_schema(schema, cursor):
 		lang = languages[lang_oid]
 		rettype = types[rettype_oid]
 		argtypes = [types[oid] for oid in argtype_oids]
-		function = objects.Function(ns, name, owner, lang, rettype, argtypes, src1, src2)
+		function = data.Function(ns, name, owner, lang, rettype, argtypes, src1, src2)
 		functions[oid] = function
 		ns.functions.append(function)
 
@@ -222,7 +214,7 @@ def populate_schema(schema, cursor):
 	                  ORDER BY tgrelid, tgname""")
 	for row in cursor:
 		table_oid, name, function_oid, description = row
-		trigger = objects.Trigger(name, functions[function_oid], description)
+		trigger = data.Trigger(name, functions[function_oid], description)
 		relations[table_oid].triggers.append(trigger)
 
 	# Rules
@@ -233,7 +225,7 @@ def populate_schema(schema, cursor):
 	                  ORDER BY ev_class, rulename""")
 	for row in cursor:
 		name, table_oid, definition = row
-		rule = objects.Rule(name, definition)
+		rule = data.Rule(name, definition)
 		relations[table_oid].rules.append(rule)
 
 	# Operators
@@ -246,7 +238,7 @@ def populate_schema(schema, cursor):
 	for row in cursor:
 		oid, name, ns_oid, owner_oid = row
 		ns = namespaces[ns_oid]
-		operator = objects.Operator(ns, name, roles[owner_oid])
+		operator = data.Operator(ns, name, roles[owner_oid])
 		operators[oid] = operator
 		ns.operators.append(operator)
 
@@ -261,7 +253,7 @@ def populate_schema(schema, cursor):
 		owner = roles[owner_oid]
 		intype = types[intype_oid]
 		keytype = types.get(keytype_oid)
-		opclass = objects.OperatorClass(ns, method, name, owner, intype, default, keytype)
+		opclass = data.OperatorClass(ns, method, name, owner, intype, default, keytype)
 		opclasses[oid] = opclass
 		ns.opclasses.append(opclass)
 

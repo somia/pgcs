@@ -4,7 +4,7 @@ import os
 import sys
 
 import core.diff
-import core.loader
+import core.load
 import html.tree
 
 tree = None
@@ -64,8 +64,8 @@ def main():
 	with open(config) as file:
 		sources = file.readlines()
 
-	schemas = core.loader.get_schemas(sources)
-	diff = core.diff.diff_schemas(*schemas)
+	databases = core.load.load_databases(sources)
+	diff = core.diff.diff_databases(*databases)
 	tree = html.tree.generate(diff)
 
 	if ":" in addr_str:
