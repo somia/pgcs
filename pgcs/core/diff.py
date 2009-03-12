@@ -14,6 +14,9 @@ class Value(object):
 	def __nonzero__(self):
 		return self.left != self.right
 
+	def __str__(self):
+		return str((self.left, self.right))
+
 class ObjectValue(Value):
 	@nonify
 	def __init__(self, l, r):

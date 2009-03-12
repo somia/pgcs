@@ -26,12 +26,14 @@ def gen_schema_body(table, obj):
 
 def gen_value(body, depth, obj, name):
 	if obj:
-		row = element(body, "tr", ["diff"], depth)
+		row = element(body, "tr", "diff", depth)
 		element(row, "td")
 		element(element(row, "td", "name"), "div").text = name
 		cell = element(row, "td", "diff")
 		cell.attrib["colspan"] = "2"
-		element(cell, "div")
+
+		content = element(cell, "div", "value")
+		content.text = unicode(obj)
 
 def gen_language(body, depth, obj):
 	gen_value(body, depth + 1, obj.owner, "owner")
