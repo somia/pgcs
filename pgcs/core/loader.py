@@ -135,9 +135,16 @@ def populate_schema(schema, cursor):
 		ns.sequences.append(sequence)
 
 	for full_name, sequence in sequences:
-		cursor.execute("""SELECT increment_by, min_value, max_value
-		                  FROM %s""" % full_name)
-		sequence.init_values(*cursor.fetchone())
+		cursor.execute("""SAVEPOINT sequence""")
+		try:
+			cursor.execute("""SELECT increment_by, min_value, max_value
+			                  FROM %s""" % full_name)
+		except:
+			cursor.execute("""ROLLBACK TO SAVEPOINT sequence""")
+			print "Failed to access sequence", full_name
+		else:
+			sequence.init_values(*cursor.fetchone())
+			cursor.execute("""RELEASE SAVEPOINT sequence""")
 
 	# Constraints
 
