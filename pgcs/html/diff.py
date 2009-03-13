@@ -39,10 +39,11 @@ def gen_database_body(table, diff):
 	gen_named_seq(tbody, depth, diff.namespaces)
 
 def gen_value(tbody, depth, diff, name):
-	tr = tbody.tr[("diff", depth)]
-	tr.td
-	tr.td["name"].div[:] = name
-	tr.td["diff"](colspan=2).div["value"][:] = diff
+	if diff:
+		tr = tbody.tr[("diff", depth)]
+		tr.td
+		tr.td["name"].div[:] = name
+		tr.td["diff"](colspan=2).div["value"][:] = diff
 
 def gen_different_types(tbody, depth, diff, name):
 	gen_value(tbody, depth, core.diff.Value(type(diff.left), type(diff.right)), name)
