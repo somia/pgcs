@@ -35,8 +35,8 @@ def gen_database_body(table, diff):
 	depth = Depth()
 
 	tbody = table.tbody
-	gen_named_seq(tbody, depth, diff.languages)
-	gen_named_seq(tbody, depth, diff.namespaces)
+	gen_named_object_list(tbody, depth, diff.languages)
+	gen_named_object_list(tbody, depth, diff.namespaces)
 
 def gen_value(tbody, depth, diff, name):
 	if diff:
@@ -46,58 +46,12 @@ def gen_value(tbody, depth, diff, name):
 		tr.td["diff"](colspan=2).div["value"][:] = diff
 
 def gen_different_types(tbody, depth, diff, name):
-	gen_value(tbody, depth, core.diff.Value(type(diff.left), type(diff.right)), name)
+	l, r = diff.objects
+	gen_value(tbody, depth, core.diff.Value(type(l), type(r)), name)
 
-def gen_language(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
-
-def gen_namespace(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
-	gen_named_seq(tbody, depth + 1, diff.types)
-	# TODO: composites
-	# TODO: indexes
-	# TODO: tables
-	# TODO: views
-	# TODO: sequences
-	gen_named_seq(tbody, depth + 1, diff.functions)
-	# TODO: operators
-	# TODO: opclasses
-
-def gen_type(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
-	gen_value(tbody, depth + 1, diff.notnull, "notnull")
-	gen_value(tbody, depth + 1, diff.default, "default")
-
-def gen_domain(tbody, depth, diff):
-	gen_type(tbody, depth, diff)
-	gen_value(tbody, depth + 1, diff.basetype, "basetype")
-	# TODO: domain constraints
-
-def gen_function(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
-	gen_value(tbody, depth + 1, diff.language, "language")
-	gen_value(tbody, depth + 1, diff.rettype, "rettype")
-	gen_value(tbody, depth + 1, diff.argtypes, "argtypes")
-	gen_value(tbody, depth + 1, diff.source1, "source1")
-	gen_value(tbody, depth + 1, diff.source2, "source2")
-
-object_types = {
-	core.diff.DifferentTypes: ("different-type", [],     gen_different_types),
-	core.diff.Domain:         ("domain",         [],     gen_domain),
-	core.diff.Function:       ("function",       [],     gen_function),
-	core.diff.Language:       ("language",       [],     gen_language),
-	core.diff.Namespace:      ("namespace",      [],     gen_namespace),
-	core.diff.Type:           ("type",           [],     gen_type),
-	core.data.Domain:         ("domain",         ["miss"], None),
-	core.data.Function:       ("function",       ["miss"], None),
-	core.data.Language:       ("language",       ["miss"], None),
-	core.data.Namespace:      ("namespace",      ["miss"], None),
-	core.data.Type:           ("type",           ["miss"], None),
-}
-
-def gen_named_seq(tbody, depth, seq):
+def gen_named_object_list(tbody, depth, seq):
 	for name, what, obj in seq or ():
-		kind, classes, func = object_types[type(obj)]
+		kind, classes, func = type_handlers[type(obj)]
 
 		tr = tbody.tr[classes + [depth]]
 		tr.td["type"].div[:] = kind
@@ -111,3 +65,117 @@ def gen_named_seq(tbody, depth, seq):
 		elif what > 0:
 			tr.td["left no"].div
 			tr.td["right yes"].div
+
+def gen_ordered_object_list(tbody, depth, seq):
+	# TODO: ...
+	pass
+
+# Language
+
+def gen_language(tbody, depth, diff):
+	gen_value(tbody, depth + 1, diff.owner, "owner")
+
+# Namespace
+
+def gen_namespace(tbody, depth, diff):
+	gen_value(tbody, depth + 1, diff.owner, "owner")
+	gen_named_object_list(tbody, depth + 1, diff.types)
+	gen_named_object_list(tbody, depth + 1, diff.composites)
+	gen_named_object_list(tbody, depth + 1, diff.indexes)
+	gen_named_object_list(tbody, depth + 1, diff.tables)
+	gen_named_object_list(tbody, depth + 1, diff.views)
+	gen_named_object_list(tbody, depth + 1, diff.sequences)
+	gen_named_object_list(tbody, depth + 1, diff.functions)
+	gen_named_object_list(tbody, depth + 1, diff.operators)
+	gen_named_object_list(tbody, depth + 1, diff.opclasses)
+
+# Type
+
+def gen_type(tbody, depth, diff):
+	gen_value(tbody, depth + 1, diff.owner, "owner")
+	gen_value(tbody, depth + 1, diff.notnull, "notnull")
+	gen_value(tbody, depth + 1, diff.default, "default")
+
+def gen_domain(tbody, depth, diff):
+	gen_type(tbody, depth, diff)
+	gen_value(tbody, depth + 1, diff.basetype, "basetype")
+	# TODO: domain constraints
+
+# Function
+
+def gen_function(tbody, depth, diff):
+	gen_value(tbody, depth + 1, diff.owner, "owner")
+	gen_value(tbody, depth + 1, diff.language, "language")
+	gen_value(tbody, depth + 1, diff.rettype, "rettype")
+	gen_value(tbody, depth + 1, diff.argtypes, "argtypes")
+	gen_value(tbody, depth + 1, diff.source1, "source1")
+	gen_value(tbody, depth + 1, diff.source2, "source2")
+
+# Relation
+
+def gen_relation(tbody, depth, diff):
+	gen_value(tbody, depth + 1, diff.owner, "owner")
+	gen_ordered_object_list(tbody, depth + 1, diff.columns)
+
+def gen_rule_relation(tbody, depth, diff):
+	gen_relation(tbody, depth, diff)
+	# TODO: rules
+
+def gen_table(tbody, depth, diff):
+	gen_rule_relation(tbody, depth, diff)
+	# TODO: triggers
+	# TODO: table constraints
+
+# Sequence
+
+def gen_sequence(tbody, depth, diff):
+	gen_value(tbody, depth + 1, diff.owner, "owner")
+	gen_value(tbody, depth + 1, diff.increment, "increment")
+	gen_value(tbody, depth + 1, diff.minimum, "minimum")
+	gen_value(tbody, depth + 1, diff.maximum, "maximum")
+
+# Column
+
+def gen_column(tbody, depth, diff):
+	gen_value(tbody, depth + 1, diff.type, "type")
+	gen_value(tbody, depth + 1, diff.notnull, "notnull")
+	gen_value(tbody, depth + 1, diff.default, "default")
+
+# Operator
+
+def gen_operator(tbody, depth, diff):
+	gen_value(tbody, depth + 1, diff.owner, "owner")
+
+def gen_operator_class(tbody, depth, diff):
+	gen_value(tbody, depth + 1, diff.owner, "owner")
+	gen_value(tbody, depth + 1, diff.intype, "intype")
+	gen_value(tbody, depth + 1, diff.default, "default")
+	gen_value(tbody, depth + 1, diff.keytype, "keytype")
+
+type_handlers = {
+	core.diff.Composite:      ("composite",      [],       gen_relation),
+	core.diff.DifferentTypes: ("different-type", [],       gen_different_types),
+	core.diff.Domain:         ("domain",         [],       gen_domain),
+	core.diff.Function:       ("function",       [],       gen_function),
+	core.diff.Index:          ("index",          [],       gen_relation),
+	core.diff.Language:       ("language",       [],       gen_language),
+	core.diff.Namespace:      ("namespace",      [],       gen_namespace),
+	core.diff.Operator:       ("operator",       [],       gen_operator),
+	core.diff.OperatorClass:  ("operator-class", [],       gen_operator_class),
+	core.diff.Sequence:       ("sequence",       [],       gen_sequence),
+	core.diff.Table:          ("table",          [],       gen_table),
+	core.diff.Type:           ("type",           [],       gen_type),
+	core.diff.View:           ("view",           [],       gen_rule_relation),
+	core.data.Composite:      ("composite",      ["miss"], None),
+	core.data.Domain:         ("domain",         ["miss"], None),
+	core.data.Function:       ("function",       ["miss"], None),
+	core.data.Index:          ("index",          ["miss"], None),
+	core.data.Language:       ("language",       ["miss"], None),
+	core.data.Namespace:      ("namespace",      ["miss"], None),
+	core.data.Operator:       ("operator",       ["miss"], None),
+	core.data.OperatorClass:  ("operator-class", ["miss"], None),
+	core.data.Sequence:       ("sequence",       ["miss"], None),
+	core.data.Table:          ("table",          ["miss"], None),
+	core.data.Type:           ("type",           ["miss"], None),
+	core.data.View:           ("view",           ["miss"], None),
+}
