@@ -38,7 +38,7 @@ class Tag(object):
 	# Example: tag[:] = "text"
 	def __setitem__(self, key, text):
 		assert isinstance(key, slice)
-		self._element.text = text
+		self._element.text = unicode(text)
 
 	# Example: tag(colspan="2")
 	def __call__(self, text=None, **kwargs):
