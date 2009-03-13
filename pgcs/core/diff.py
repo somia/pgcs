@@ -12,7 +12,10 @@ class Diff(object):
 
 class AnyDiff(Diff):
 	def __nonzero__(self):
-		return any(self.__dict__.itervalues())
+		for key, value in self.__dict__.iteritems():
+			if key != "objects" and value:
+				return True
+		return False
 
 class Value(Diff):
 	def __nonzero__(self):
@@ -81,9 +84,6 @@ class Database(AnyDiff):
 		AnyDiff.__init__(self, l, r)
 		self.languages = NamedObjectList(l.languages, r.languages) or None
 		self.namespaces = NamedObjectList(l.namespaces, r.namespaces) or None
-
-	def __nonzero__(self):
-		return bool(self.languages or self.namespaces)
 
 # Language
 
