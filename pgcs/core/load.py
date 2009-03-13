@@ -76,17 +76,20 @@ def populate_database(db, cursor):
 		"p": data.Type, # pseudo
 	}
 
-	cursor.execute("""SELECT oid, typname, typnamespace, typowner, typtype, typnotnull,
-	                         typdefault
-	                  FROM pg_type
-	                  WHERE typisdefined
-	                  ORDER BY typnamespace, typname""")
+	cursor.execute("""SELECT a.oid, a.typname, a.typnamespace, a.typowner, a.typtype,
+	                         a.typnotnull, a.typdefault, b.typrelid
+	                  FROM pg_type AS a
+	                  LEFT OUTER JOIN pg_type AS b ON a.typelem = b.oid
+	                  WHERE a.typisdefined
+	                  ORDER BY a.typnamespace, a.typname""")
 	for row in cursor:
-		oid, name, ns_oid, owner_oid, kind, notnull, default = row
+		oid, name, ns_oid, owner_oid, kind, notnull, default, super_oid = row
+		if name == "__removed_lids":
+			print row
 		ns = namespaces[ns_oid]
 		type = type_types[kind](ns, name, roles[owner_oid], notnull, default)
 		types[oid] = type
-		if kind in "bde":
+		if kind in "bde" and not super_oid:
 			ns.types.append(type)
 
 	cursor.execute("""SELECT oid, typbasetype
