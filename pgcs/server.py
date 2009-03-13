@@ -5,7 +5,7 @@ import sys
 
 import core.diff
 import core.load
-import html.tree
+import html.diff
 
 tree = None
 
@@ -66,7 +66,7 @@ def main():
 
 	databases = core.load.load_databases(sources)
 	diff = core.diff.diff_databases(*databases)
-	tree = html.tree.generate(diff)
+	tree = html.diff.generate(diff)
 
 	if ":" in addr_str:
 		host, port = addr_str.split(":")
