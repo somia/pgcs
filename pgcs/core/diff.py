@@ -1,3 +1,5 @@
+import difflib
+
 from . import data
 
 def get_value(obj):
@@ -37,9 +39,19 @@ class ObjectListValue(Diff):
 class DifferentTypes(Diff):
 	pass
 
-class NamedObjectList(list):
+class ObjectList(list):
+	def append_object_diff(self, obj1, obj2):
+		if type(obj1) != type(obj2):
+			diff = DifferentTypes(obj1, obj2)
+		else:
+			diff = diff_types[type(obj1)](obj1, obj2)
+
+		if diff:
+			self.append((obj1.name, 0, diff))
+
+class NamedObjectList(ObjectList):
 	def __init__(self, seq1, seq2):
-		list.__init__(self)
+		ObjectList.__init__(self)
 
 		names = set()
 
@@ -58,24 +70,46 @@ class NamedObjectList(list):
 			obj2 = map2.get(name)
 
 			if obj1 and obj2:
-				if type(obj1) != type(obj2):
-					diff = DifferentTypes(obj1, obj2)
-				else:
-					diff = diff_types[type(obj1)](obj1, obj2)
-
-				if diff:
-					self.append((name, 0, diff))
-
+				self.append_object_diff(obj1, obj2)
 			elif obj1:
 				self.append((name, -1, obj1))
-
 			elif obj2:
 				self.append((name, +1, obj2))
 
-class OrderedObjectList(list):
+class NamedHash(object):
+	__slots__ = ["object"]
+
+	def __init__(self, object):
+		self.object = object
+
+	def __hash__(self):
+		return hash(self.object.name)
+
+	def __eq__(self, other):
+		return self.object.name == other.object.name
+
+class OrderedObjectList(ObjectList):
 	def __init__(self, seq1, seq2):
-		list.__init__(self)
-		# TODO: ...
+		ObjectList.__init__(self)
+
+		hash1 = [NamedHash(o) for o in seq1]
+		hash2 = [NamedHash(o) for o in seq2]
+		match = difflib.SequenceMatcher(a=hash1, b=hash2)
+
+		for tag, i1, i2, j1, j2 in match.get_opcodes():
+			if tag in ("delete", "replace"):
+				for obj in seq1[i1:i2]:
+					self.append((obj.name, -1, obj))
+
+			if tag in ("insert", "replace"):
+				for obj in seq2[j1:j2]:
+					self.append((obj.name, +1, obj))
+
+			if tag == "equal":
+				for n in xrange(i2 - i1):
+					obj1 = seq1[i1 + n]
+					obj2 = seq2[j1 + n]
+					self.append_object_diff(obj1, obj2)
 
 # Database
 

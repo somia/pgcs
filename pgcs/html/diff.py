@@ -67,8 +67,7 @@ def gen_named_object_list(tbody, depth, seq):
 			tr.td["right yes"].div
 
 def gen_ordered_object_list(tbody, depth, seq):
-	# TODO: ...
-	pass
+	gen_named_object_list(tbody, depth, seq)
 
 # Language
 
@@ -141,6 +140,13 @@ def gen_column(tbody, depth, diff):
 	gen_value(tbody, depth + 1, diff.notnull, "notnull")
 	gen_value(tbody, depth + 1, diff.default, "default")
 
+# Column
+
+def gen_column(tbody, depth, diff):
+	gen_value(tbody, depth + 1, diff.type, "type")
+	gen_value(tbody, depth + 1, diff.notnull, "notnull")
+	gen_value(tbody, depth + 1, diff.default, "default")
+
 # Operator
 
 def gen_operator(tbody, depth, diff):
@@ -153,6 +159,7 @@ def gen_operator_class(tbody, depth, diff):
 	gen_value(tbody, depth + 1, diff.keytype, "keytype")
 
 type_handlers = {
+	core.diff.Column:         ("column",         [],       gen_column),
 	core.diff.Composite:      ("composite",      [],       gen_relation),
 	core.diff.DifferentTypes: ("different-type", [],       gen_different_types),
 	core.diff.Domain:         ("domain",         [],       gen_domain),
@@ -166,6 +173,7 @@ type_handlers = {
 	core.diff.Table:          ("table",          [],       gen_table),
 	core.diff.Type:           ("type",           [],       gen_type),
 	core.diff.View:           ("view",           [],       gen_rule_relation),
+	core.data.Column:         ("column",         ["miss"], None),
 	core.data.Composite:      ("composite",      ["miss"], None),
 	core.data.Domain:         ("domain",         ["miss"], None),
 	core.data.Function:       ("function",       ["miss"], None),
