@@ -84,8 +84,6 @@ def populate_database(db, cursor):
 	                  ORDER BY a.typnamespace, a.typname""")
 	for row in cursor:
 		oid, name, ns_oid, owner_oid, kind, notnull, default, super_oid = row
-		if name == "__removed_lids":
-			print row
 		ns = namespaces[ns_oid]
 		type = type_types[kind](ns, name, roles[owner_oid], notnull, default)
 		types[oid] = type
