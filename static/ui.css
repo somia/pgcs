@@ -40,13 +40,19 @@ td.link div {
 }
 
 td.type div {
-	font-size: 7pt;
+	font-size: 8pt;
 	margin-right: 6pt;
-	color: #ccc;
+	color: #aaa;
 }
 
 td.name div {
 	font-family: monospace;
+}
+
+tr.list td.name div {
+	font-family: sans-serif;
+	font-size: 8pt;
+	color: #aaa;
 }
 
 tr.diff td.name div {
@@ -84,3 +90,8 @@ tr.depth-1 td.name div { margin-left: 24pt; }
 tr.depth-2 td.name div { margin-left: 48pt; }
 tr.depth-3 td.name div { margin-left: 72pt; }
 tr.depth-4 td.name div { margin-left: 96pt; }
+tr.depth-5 td.name div { margin-left: 120pt; }
+tr.depth-6 td.name div { margin-left: 144pt; }
+tr.depth-7 td.name div { margin-left: 168pt; }
+tr.depth-8 td.name div { margin-left: 192pt; }
+tr.depth-9 td.name div { margin-left: 216pt; }

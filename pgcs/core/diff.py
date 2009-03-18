@@ -39,19 +39,19 @@ class ObjectListValue(Diff):
 class DifferentTypes(Diff):
 	pass
 
-class ObjectList(list):
-	def append_object_diff(self, obj1, obj2):
+class BaseObjectList(list):
+	def append_object_diff(list, obj1, obj2):
 		if type(obj1) != type(obj2):
 			diff = DifferentTypes(obj1, obj2)
 		else:
 			diff = diff_types[type(obj1)](obj1, obj2)
 
 		if diff:
-			self.append((obj1.name, 0, diff))
+			list.append((obj1.name, 0, diff))
 
-class NamedObjectList(ObjectList):
+class NamedObjectList(BaseObjectList):
 	def __init__(self, seq1, seq2):
-		ObjectList.__init__(self)
+		BaseObjectList.__init__(self)
 
 		names = set()
 
@@ -88,9 +88,9 @@ class NamedHash(object):
 	def __eq__(self, other):
 		return self.object.name == other.object.name
 
-class OrderedObjectList(ObjectList):
+class OrderedObjectList(BaseObjectList):
 	def __init__(self, seq1, seq2):
-		ObjectList.__init__(self)
+		BaseObjectList.__init__(self)
 
 		hash1 = [NamedHash(o) for o in seq1]
 		hash2 = [NamedHash(o) for o in seq2]
@@ -110,6 +110,13 @@ class OrderedObjectList(ObjectList):
 					obj1 = seq1[i1 + n]
 					obj2 = seq2[j1 + n]
 					self.append_object_diff(obj1, obj2)
+
+class IndexedObjectList(OrderedObjectList):
+	def __init__(self, map1, map2):
+		seq1 = [map1[i] for i in sorted(map1)]
+		seq2 = [map2[i] for i in sorted(map2)]
+
+		OrderedObjectList.__init__(self, seq1, seq2)
 
 # Database
 
@@ -155,7 +162,7 @@ class Domain(Type):
 	def __init__(self, l, r):
 		Type.__init__(self, l, r)
 		self.basetype = ObjectValue(l.basetype, r.basetype) or None
-		# TODO: domain constraints
+		self.constraints = NamedObjectList(l.constraints, r.constraints) or None
 
 # Function
 
@@ -173,12 +180,9 @@ class Function(AnyDiff):
 
 class Relation(AnyDiff):
 	def __init__(self, l, r):
-		def values(map):
-			return [map[i] for i in sorted(map)]
-
 		AnyDiff.__init__(self, l, r)
 		self.owner = Value(l.owner, r.owner) or None
-		self.columns = OrderedObjectList(values(l.columns), values(r.columns)) or None
+		self.columns = IndexedObjectList(l.columns, r.columns) or None
 
 class Composite(Relation):
 	pass
@@ -189,13 +193,13 @@ class Index(Relation):
 class RuleRelation(Relation):
 	def __init__(self, l, r):
 		Relation.__init__(self, l, r)
-		# TODO: rules
+		self.rules = NamedObjectList(l.rules, r.rules) or None
 
 class Table(RuleRelation):
 	def __init__(self, l, r):
 		RuleRelation.__init__(self, l, r)
-		# TODO: triggers
-		# TODO: table constraints
+		self.triggers = NamedObjectList(l.triggers, r.triggers) or None
+		self.constraints = NamedObjectList(l.constraints, r.constraints) or None
 
 class View(RuleRelation):
 	pass
@@ -219,6 +223,54 @@ class Column(AnyDiff):
 		self.notnull = Value(l.notnull, r.notnull) or None
 		self.default = Value(l.default, r.default) or None
 
+# Constraint
+
+class Constraint(AnyDiff):
+	def __init__(self, l, r):
+		AnyDiff.__init__(self, l, r)
+		self.definition = Value(l.definition, r.definition) or None
+
+class CheckConstraint(Constraint):
+	pass
+
+class UniqueConstraint(Constraint):
+	pass
+
+class ColumnConstraint(Constraint):
+	def __init__(self, l, r):
+		Constraint.__init__(self, l, r)
+		self.columns = OrderedObjectList(l.columns, r.columns) or None
+
+class CheckColumnConstraint(ColumnConstraint):
+	pass
+
+class UniqueColumnConstraint(ColumnConstraint):
+	pass
+
+class PrimaryKey(ColumnConstraint):
+	pass
+
+class ForeignKey(ColumnConstraint):
+	def __init__(self, l, r):
+		ColumnConstraint.__init__(self, l, r)
+		self.foreign_table = ObjectValue(l.foreign_table, r.foreign_table) or None
+		self.foreign_columns = OrderedObjectList(l.foreign_columns, r.foreign_columns) or None
+
+# Trigger
+
+class Trigger(AnyDiff):
+	def __init__(self, l, r):
+		AnyDiff.__init__(self, l, r)
+		self.function = ObjectValue(l.function, r.function) or None
+		self.description = Value(l.description, r.description) or None
+
+# Rule
+
+class Rule(AnyDiff):
+	def __init__(self, l, r):
+		AnyDiff.__init__(self, l, r)
+		self.definition = Value(l.definition, r.definition) or None
+
 # Operator
 
 class Operator(AnyDiff):
@@ -235,18 +287,26 @@ class OperatorClass(AnyDiff):
 		self.keytype = ObjectValue(l.keytype, r.keytype) or None
 
 diff_types = {
+	data.CheckColumnConstraint: CheckColumnConstraint,
+	data.CheckConstraint: CheckConstraint,
 	data.Column: Column,
 	data.Composite: Composite,
 	data.Domain: Domain,
+	data.ForeignKey: ForeignKey,
 	data.Function: Function,
 	data.Index: Index,
 	data.Language: Language,
 	data.Namespace: Namespace,
 	data.Operator: Operator,
 	data.OperatorClass: OperatorClass,
+	data.PrimaryKey: PrimaryKey,
+	data.Rule: Rule,
 	data.Sequence: Sequence,
 	data.Table: Table,
+	data.Trigger: Trigger,
 	data.Type: Type,
+	data.UniqueColumnConstraint: UniqueColumnConstraint,
+	data.UniqueConstraint: UniqueConstraint,
 	data.View: View,
 }
 
