@@ -22,15 +22,15 @@ th div {
 	font-size: 7pt;
 }
 
-tr.miss:hover {
+tr.list-entry:hover {
 	background-color: #eee;
 }
 
-tr.diff:hover {
+tr.value:hover {
 	background-color: #eee;
 }
 
-td.left div, td.right div {
+td.db div {
 	width: 24px;
 	overflow-x: hidden;
 }
@@ -49,18 +49,18 @@ td.name div {
 	font-family: monospace;
 }
 
-tr.list td.name div {
+tr.list-head td.name div {
 	font-family: sans-serif;
 	font-size: 8pt;
 	color: #aaa;
 }
 
-tr.diff td.name div {
+tr.value td.name div {
 	font-family: sans-serif;
 	color: blue;
 }
 
-tr.diff div.value {
+tr.value div.value {
 	display: none;
 }
 
@@ -78,11 +78,11 @@ td.yes div, td.no div {
 }
 
 td.yes div {
-	background-color: green;
+	background-color: black;
 }
 
 td.no div {
-	background-color: red;
+	background-color: #eee;
 }
 
 tr.depth-0 td.name div { margin-left: 0pt; }

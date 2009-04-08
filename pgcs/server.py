@@ -65,7 +65,7 @@ def main():
 		sources = file.readlines()
 
 	databases = core.load.load_databases(sources)
-	diff = core.diff.diff_databases(*databases)
+	diff = core.diff.diff_databases(databases)
 	tree = html.diff.generate(diff)
 
 	if ":" in addr_str:

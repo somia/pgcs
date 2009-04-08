@@ -11,6 +11,9 @@ def xref(source, target):
 	elif target is not None:
 		target.xrefs.add(source)
 
+def flatten(obj):
+	return obj and obj.flatten()
+
 # Database
 
 class Database(object):
@@ -38,7 +41,7 @@ class Language(XReferee):
 		XReferee.__init__(self)
 		self.name, self.owner = values
 
-	def get_value(self):
+	def flatten(self):
 		return self.name
 
 # Namespace
@@ -59,7 +62,7 @@ class Namespace(object):
 		self.operators = []
 		self.opclasses = []
 
-	def get_value(self):
+	def flatten(self):
 		return self.name
 
 # Type
@@ -71,7 +74,7 @@ class Type(XReferee):
 		XReferee.__init__(self)
 		self.namespace, self.name, self.owner, self.notnull, self.default = values
 
-	def get_value(self):
+	def flatten(self):
 		return self.namespace.name, self.name
 
 class Domain(Type):
@@ -99,7 +102,7 @@ class Function(XReferee):
 		xref(self, self.rettype)
 		xref(self, self.argtypes)
 
-	def get_value(self):
+	def flatten(self):
 		return self.namespace.name, self.name
 
 # Relation
@@ -112,7 +115,7 @@ class Relation(XReferee):
 		self.namespace, self.name, self.owner = values
 		self.columns = {}
 
-	def get_value(self):
+	def flatten(self):
 		return self.namespace.name, self.name
 
 class Composite(Relation):
@@ -146,11 +149,14 @@ class Sequence(object):
 
 	def __init__(self, *values):
 		self.namespace, self.name, self.owner = values
+		self.increment = None
+		self.minimum = None
+		self.maximum = None
 
 	def init_values(self, *values):
 		self.increment, self.minimum, self.maximum = values
 
-	def get_value(self):
+	def flatten(self):
 		return self.namespace.name, self.name
 
 # Column
@@ -163,7 +169,15 @@ class Column(XReferee):
 		self.name, self.type, self.notnull, self.default = values
 		xref(self, self.type)
 
-	def get_value(self):
+	def __eq__(self, other):
+		return self.name == other.name and flatten(self.type) == flatten(other.type) and \
+		       self.notnull == other.notnull and self.default == other.default
+
+	def __hash__(self):
+		return hash(self.name) ^ hash(flatten(self.type)) ^ hash(self.notnull) ^ \
+		       hash(self.default)
+
+	def flatten(self):
 		return self.name
 
 # Constraint
@@ -174,7 +188,7 @@ class Constraint(object):
 	def __init__(self, *values):
 		self.name, self.definition = values
 
-	def get_value(self):
+	def flatten(self):
 		return self.name
 
 class CheckConstraint(Constraint):
@@ -217,7 +231,7 @@ class Trigger(object):
 		self.name, self.function, self.description = values
 		xref(self, self.function)
 
-	def get_value(self):
+	def flatten(self):
 		return self.name
 
 # Rule
@@ -228,7 +242,7 @@ class Rule(object):
 	def __init__(self, *values):
 		self.name, self.definition = values
 
-	def get_value(self):
+	def flatten(self):
 		return self.name
 
 # Operator
@@ -239,7 +253,7 @@ class Operator(object):
 	def __init__(self, *values):
 		self.namespace, self.name, self.owner = values
 
-	def get_value(self):
+	def flatten(self):
 		return self.namespace.name, self.name
 
 class OperatorClass(object):
@@ -251,5 +265,5 @@ class OperatorClass(object):
 		xref(self, self.intype)
 		xref(self, self.keytype)
 
-	def get_value(self):
+	def flatten(self):
 		return self.namespace.name, self.method, self.name

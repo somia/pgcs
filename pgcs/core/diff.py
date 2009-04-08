@@ -1,80 +1,119 @@
 import difflib
+import functools
 
 from . import data
 
-def get_value(obj):
-	return obj and obj.get_value()
+different = object()
 
-class Diff(object):
-	def __init__(self, l, r):
-		self.objects = l, r
+def similar(a, b):
+	if a == b:
+		return a
+	else:
+		return different
 
-	def __str__(self):
-		return str(self.objects)
+def parse(objects, kwargs):
+	if objects is None:
+		(attr, objects), = kwargs.items()
+		objects = [obj and getattr(obj, attr) for obj in objects]
+	return objects
 
-class AnyDiff(Diff):
+class Value(object):
+	def __init__(self, values=None, **kwargs):
+		values = parse(values, kwargs)
+
+		self.values = []
+
+		prototypes = []
+
+		for obj in values:
+			group = -1
+
+			if obj is not None:
+				found = False
+
+				for group in xrange(len(prototypes)):
+					if obj == prototypes[group]:
+						found = True
+						break
+
+				if not found:
+					group = len(prototypes)
+					prototypes.append(obj)
+
+			self.values.append((obj, group))
+
+		self.groups = len(prototypes)
+
 	def __nonzero__(self):
-		for key, value in self.__dict__.iteritems():
-			if key != "objects" and value:
-				return True
-		return False
+		return self.groups > 1
 
-class Value(Diff):
-	def __nonzero__(self):
-		l, r = self.objects
-		return l != r
+class ObjectValue(Value):
+	def __init__(self, objects=None, **kwargs):
+		objects = parse(objects, kwargs)
+		Value.__init__(self, [data.flatten(obj) for obj in objects])
 
-class ObjectValue(Diff):
-	def __nonzero__(self):
-		l, r = self.objects
-		return get_value(l) != get_value(r)
+class ObjectListValue(Value):
+	def __init__(self, lists=None, **kwargs):
+		lists = parse(lists, kwargs)
+		Value.__init__(self, [[data.flatten(obj) for obj in seq or ()] for seq in lists])
 
-class ObjectListValue(Diff):
-	def __nonzero__(self):
-		l, r = self.objects
-		value1 = [get_value(obj) for obj in l]
-		value2 = [get_value(obj) for obj in r]
-		return value1 != value2
+class OrderedObjectList(ObjectListValue):
+	def __init__(self, lists=None, **kwargs):
+		self.lists = parse(lists, kwargs)
+		ObjectListValue.__init__(self, self.lists)
 
-class DifferentTypes(Diff):
-	pass
+class DifferentTypes(Value):
+	def __init__(self, objects=None, **kwargs):
+		self.objects = parse(objects, kwargs)
+		Value.__init__(self, [type(obj) for obj in self.objects])
 
-class BaseObjectList(list):
-	def append_object_diff(list, obj1, obj2):
-		if type(obj1) != type(obj2):
-			diff = DifferentTypes(obj1, obj2)
+class Entry(object):
+	def __init__(self, name, objects=None, **kwargs):
+		self.name = name
+		self.objects = parse(objects, kwargs)
+
+		kind = None
+		for obj in self.objects:
+			if obj is not None:
+				if kind is None:
+					kind = type(obj)
+				elif kind != type(obj):
+					print "Diffing different object types not supported"
+					kind = None
+					break
+
+		if kind:
+			self.diff = diff_types[kind](self.objects)
 		else:
-			diff = diff_types[type(obj1)](obj1, obj2)
+			self.diff = None
 
-		if diff:
-			list.append((obj1.name, 0, diff))
+	def __nonzero__(self):
+		return functools.reduce(similar, self.objects) is different
 
-class NamedObjectList(BaseObjectList):
-	def __init__(self, seq1, seq2):
-		BaseObjectList.__init__(self)
+class NamedObjectList(object):
+	def __init__(self, _sequences=None, **kwargs):
+		sequences = parse(_sequences, kwargs)
+
+		self.entries = []
 
 		names = set()
 
-		def map(seq):
+		def name_map(seq):
 			map = {}
-			for obj in seq:
+			for obj in seq or ():
 				names.add(obj.name)
 				map[obj.name] = obj
 			return map
 
-		map1 = map(seq1)
-		map2 = map(seq2)
+		maps = [name_map(seq) for seq in sequences]
 
 		for name in sorted(names):
-			obj1 = map1.get(name)
-			obj2 = map2.get(name)
+			entry = Entry(name, [map.get(name) for map in maps])
+			if entry:
+				self.entries.append(entry)
 
-			if obj1 and obj2:
-				self.append_object_diff(obj1, obj2)
-			elif obj1:
-				self.append((name, -1, obj1))
-			elif obj2:
-				self.append((name, +1, obj2))
+	def __nonzero__(self):
+		return bool(self.entries)
 
 class NamedHash(object):
 	__slots__ = ["object"]
@@ -88,9 +127,14 @@ class NamedHash(object):
 	def __eq__(self, other):
 		return self.object.name == other.object.name
 
-class OrderedObjectList(BaseObjectList):
+class __xxx__DifferentTypes(Value):
+	def __init__(self, objects=None, **kwargs):
+		self.objects = parse(objects, kwargs)
+		Value.__init__(self, [type(obj) for obj in self.objects])
+
+class __xxx__OrderedObjectList2WayDiff(object):
 	def __init__(self, seq1, seq2):
-		BaseObjectList.__init__(self)
+		self.entries = []
 
 		hash1 = [NamedHash(o) for o in seq1]
 		hash2 = [NamedHash(o) for o in seq2]
@@ -99,90 +143,105 @@ class OrderedObjectList(BaseObjectList):
 		for tag, i1, i2, j1, j2 in match.get_opcodes():
 			if tag in ("delete", "replace"):
 				for obj in seq1[i1:i2]:
-					self.append((obj.name, -1, obj))
+					self.entries.append((obj.name, -1, obj))
 
 			if tag in ("insert", "replace"):
 				for obj in seq2[j1:j2]:
-					self.append((obj.name, +1, obj))
+					self.entries.append((obj.name, +1, obj))
 
 			if tag == "equal":
 				for n in xrange(i2 - i1):
 					obj1 = seq1[i1 + n]
 					obj2 = seq2[j1 + n]
-					self.append_object_diff(obj1, obj2)
+
+					if type(obj1) != type(obj2):
+						diff = DifferentTypes(obj1, obj2)
+					else:
+						diff = diff_types[type(obj1)](obj1, obj2)
+
+					if diff:
+						self.entries.append((obj1.name, 0, diff))
 
 class IndexedObjectList(OrderedObjectList):
-	def __init__(self, map1, map2):
-		seq1 = [map1[i] for i in sorted(map1)]
-		seq2 = [map2[i] for i in sorted(map2)]
+	def __init__(self, maps=None, **kwargs):
+		maps = parse(maps, kwargs)
+		OrderedObjectList.__init__(self, [[map[i] for i in sorted(map or ())] for map in maps])
 
-		OrderedObjectList.__init__(self, seq1, seq2)
+class Any(object):
+	def __init__(self, objects):
+		self.objects = objects
+
+	def __nonzero__(self):
+		for key, value in self.__dict__.iteritems():
+			if key != "objects" and value:
+				return True
+		return False
 
 # Database
 
-class Database(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.languages = NamedObjectList(l.languages, r.languages) or None
-		self.namespaces = NamedObjectList(l.namespaces, r.namespaces) or None
+class Database(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.languages = NamedObjectList(languages=objects) or None
+		self.namespaces = NamedObjectList(namespaces=objects) or None
 
 # Language
 
-class Language(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.owner = Value(l.owner, r.owner) or None
+class Language(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.owner = Value(owner=objects) or None
 
 # Namespace
 
-class Namespace(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.owner = Value(l.owner, r.owner) or None
-		self.types = NamedObjectList(l.types, r.types) or None
-		self.composites = NamedObjectList(l.composites, r.composites) or None
-		self.indexes = NamedObjectList(l.indexes, r.indexes) or None
-		self.tables = NamedObjectList(l.tables, r.tables) or None
-		self.views = NamedObjectList(l.views, r.views) or None
-		self.sequences = NamedObjectList(l.sequences, r.sequences) or None
-		self.functions = NamedObjectList(l.functions, r.functions) or None
-		self.operators = NamedObjectList(l.operators, r.operators) or None
-		self.opclasses = NamedObjectList(l.opclasses, r.opclasses) or None
+class Namespace(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.owner = Value(owner=objects) or None
+		self.types = NamedObjectList(types=objects) or None
+		self.composites = NamedObjectList(composites=objects) or None
+		self.indexes = NamedObjectList(indexes=objects) or None
+		self.tables = NamedObjectList(tables=objects) or None
+		self.views = NamedObjectList(views=objects) or None
+		self.sequences = NamedObjectList(sequences=objects) or None
+		self.functions = NamedObjectList(functions=objects) or None
+		self.operators = NamedObjectList(operators=objects) or None
+		self.opclasses = NamedObjectList(opclasses=objects) or None
 
 # Type
 
-class Type(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.owner = Value(l.owner, r.owner) or None
-		self.notnull = Value(l.notnull, r.notnull) or None
-		self.default = Value(l.default, r.default) or None
+class Type(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.owner = Value(owner=objects) or None
+		self.notnull = Value(notnull=objects) or None
+		self.default = Value(default=objects) or None
 
 class Domain(Type):
-	def __init__(self, l, r):
-		Type.__init__(self, l, r)
-		self.basetype = ObjectValue(l.basetype, r.basetype) or None
-		self.constraints = NamedObjectList(l.constraints, r.constraints) or None
+	def __init__(self, objects):
+		Type.__init__(self, objects)
+		self.basetype = ObjectValue(basetype=objects) or None
+		self.constraints = NamedObjectList(constraints=objects) or None
 
 # Function
 
-class Function(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.owner = Value(l.owner, r.owner) or None
-		self.language = ObjectValue(l.language, r.language) or None
-		self.rettype = ObjectValue(l.rettype, r.rettype) or None
-		self.argtypes = ObjectListValue(l.argtypes, r.argtypes) or None
-		self.source1 = Value(l.source1, r.source1) or None
-		self.source2 = Value(l.source2, r.source2) or None
+class Function(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.owner = Value(owner=objects) or None
+		self.language = ObjectValue(language=objects) or None
+		self.rettype = ObjectValue(rettype=objects) or None
+		self.argtypes = ObjectListValue(argtypes=objects) or None
+		self.source1 = Value(source1=objects) or None
+		self.source2 = Value(source2=objects) or None
 
 # Relation
 
-class Relation(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.owner = Value(l.owner, r.owner) or None
-		self.columns = IndexedObjectList(l.columns, r.columns) or None
+class Relation(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.owner = Value(owner=objects) or None
+		self.columns = IndexedObjectList(columns=objects) or None
 
 class Composite(Relation):
 	pass
@@ -191,44 +250,44 @@ class Index(Relation):
 	pass
 
 class RuleRelation(Relation):
-	def __init__(self, l, r):
-		Relation.__init__(self, l, r)
-		self.rules = NamedObjectList(l.rules, r.rules) or None
+	def __init__(self, objects):
+		Relation.__init__(self, objects)
+		self.rules = NamedObjectList(rules=objects) or None
 
 class Table(RuleRelation):
-	def __init__(self, l, r):
-		RuleRelation.__init__(self, l, r)
-		self.triggers = NamedObjectList(l.triggers, r.triggers) or None
-		self.constraints = NamedObjectList(l.constraints, r.constraints) or None
+	def __init__(self, objects):
+		RuleRelation.__init__(self, objects)
+		self.triggers = NamedObjectList(triggers=objects) or None
+		self.constraints = NamedObjectList(constraints=objects) or None
 
 class View(RuleRelation):
 	pass
 
 # Sequence
 
-class Sequence(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.owner = Value(l.owner, r.owner) or None
-		self.increment = Value(l.increment, r.increment) or None
-		self.minimum = Value(l.minimum, r.minimum) or None
-		self.maximum = Value(l.maximum, r.maximum) or None
+class Sequence(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.owner = Value(owner=objects) or None
+		self.increment = Value(increment=objects) or None
+		self.minimum = Value(minimum=objects) or None
+		self.maximum = Value(maximum=objects) or None
 
 # Column
 
-class Column(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.type = ObjectValue(l.type, r.type) or None
-		self.notnull = Value(l.notnull, r.notnull) or None
-		self.default = Value(l.default, r.default) or None
+class Column(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.type = ObjectValue(type=objects) or None
+		self.notnull = Value(notnull=objects) or None
+		self.default = Value(default=objects) or None
 
 # Constraint
 
-class Constraint(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.definition = Value(l.definition, r.definition) or None
+class Constraint(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.definition = Value(definition=objects) or None
 
 class CheckConstraint(Constraint):
 	pass
@@ -237,9 +296,9 @@ class UniqueConstraint(Constraint):
 	pass
 
 class ColumnConstraint(Constraint):
-	def __init__(self, l, r):
-		Constraint.__init__(self, l, r)
-		self.columns = OrderedObjectList(l.columns, r.columns) or None
+	def __init__(self, objects):
+		Constraint.__init__(self, objects)
+		self.columns = OrderedObjectList(columns=objects) or None
 
 class CheckColumnConstraint(ColumnConstraint):
 	pass
@@ -251,40 +310,40 @@ class PrimaryKey(ColumnConstraint):
 	pass
 
 class ForeignKey(ColumnConstraint):
-	def __init__(self, l, r):
-		ColumnConstraint.__init__(self, l, r)
-		self.foreign_table = ObjectValue(l.foreign_table, r.foreign_table) or None
-		self.foreign_columns = OrderedObjectList(l.foreign_columns, r.foreign_columns) or None
+	def __init__(self, objects):
+		ColumnConstraint.__init__(self, objects)
+		self.foreign_table = ObjectValue(foreign_table=objects) or None
+		self.foreign_columns = OrderedObjectList(foreign_columns=objects) or None
 
 # Trigger
 
-class Trigger(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.function = ObjectValue(l.function, r.function) or None
-		self.description = Value(l.description, r.description) or None
+class Trigger(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.function = ObjectValue(function=objects) or None
+		self.description = Value(description=objects) or None
 
 # Rule
 
-class Rule(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.definition = Value(l.definition, r.definition) or None
+class Rule(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.definition = Value(definition=objects) or None
 
 # Operator
 
-class Operator(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.owner = Value(l.owner, r.owner) or None
+class Operator(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.owner = Value(owner=objects) or None
 
-class OperatorClass(AnyDiff):
-	def __init__(self, l, r):
-		AnyDiff.__init__(self, l, r)
-		self.owner = Value(l.owner, r.owner) or None
-		self.intype = ObjectValue(l.intype, r.intype) or None
-		self.default = Value(l.default, r.default) or None
-		self.keytype = ObjectValue(l.keytype, r.keytype) or None
+class OperatorClass(Any):
+	def __init__(self, objects):
+		Any.__init__(self, objects)
+		self.owner = Value(owner=objects) or None
+		self.intype = ObjectValue(intype=objects) or None
+		self.default = Value(default=objects) or None
+		self.keytype = ObjectValue(keytype=objects) or None
 
 diff_types = {
 	data.CheckColumnConstraint: CheckColumnConstraint,
@@ -310,5 +369,5 @@ diff_types = {
 	data.View: View,
 }
 
-def diff_databases(*objects):
-	return Database(*objects)
+def diff_databases(objects):
+	return Database(objects)
