@@ -1,7 +1,100 @@
-class XReferee(object):
-	__slots__ = ["xrefs"]
+FLAG_VALUE   = 0x0
+FLAG_OBJECT  = 0x1
+FLAG_LIST    = 0x2
+FLAG_DICT    = 0x4
+FLAG_KEY     = 0x8
 
+class Data(object):
 	def __init__(self):
+		for name, flags in self.value_info:
+			if flags & FLAG_LIST:
+				setattr(self, name, [])
+			elif flags & FLAG_DICT:
+				setattr(self, name, {})
+			else:
+				# TODO: use __slots__ instead
+				setattr(self, name, None)
+
+		self.__hashcode = None
+		self.__flat = None
+
+	def __eq__(self, other):
+		if other is None or not isinstance(other, Data):
+			return False
+
+		for name, flags in self.value_info:
+			value1 = getattr(self, name)
+			value2 = getattr(other, name)
+
+			if flags & FLAG_OBJECT:
+				if flags & FLAG_LIST:
+					value1 = [flatten(o) for o in value1]
+					value2 = [flatten(o) for o in value2]
+				elif flags & FLAG_DICT:
+					value1 = [flatten(o) for o in value1.values()]
+					value2 = [flatten(o) for o in value2.values()]
+				else:
+					value1 = flatten(value1)
+					value2 = flatten(value2)
+			elif flags & FLAG_DICT:
+				value1 = value1.values()
+				value2 = value2.values()
+
+			if value1 != value2:
+				return False
+
+		return True
+
+	def __ne__(self, other):
+		return not self.__eq__(other)
+
+	def __hash__(self):
+		if self.__hashcode is None:
+			hashcode = 0
+
+			for name, flags in self.value_info:
+				value = getattr(self, name)
+				value = self.__freeze(value, flags)
+				hashcode ^= hash(value)
+
+			self.__hashcode = hashcode
+
+		return self.__hashcode
+
+	def flatten(self):
+		if self.__flat is None:
+			flat = []
+
+			for name, flags in self.value_info:
+				if flags & FLAG_KEY:
+					value = getattr(self, name)
+					value = self.__freeze(value, flags)
+					flat.append(value)
+
+			self.__flat = tuple(flat)
+
+		return self.__flat
+
+	@staticmethod
+	def __freeze(value, flags):
+		if flags & FLAG_OBJECT:
+			filter = flatten
+		else:
+			def filter(value):
+				return value
+
+		if flags & FLAG_LIST:
+			value = tuple([filter(o) for o in value])
+		elif flags & FLAG_DICT:
+			value = tuple([filter(o) for o in value.values()])
+		else:
+			value = filter(value)
+
+		return value
+
+class XReferee(Data):
+	def __init__(self):
+		Data.__init__(self)
 		self.xrefs = set()
 
 def xref(source, target):
@@ -11,18 +104,21 @@ def xref(source, target):
 	elif target is not None:
 		target.xrefs.add(source)
 
-def flatten(obj):
-	return obj and obj.flatten()
+def flatten(data):
+	return data and data.flatten()
 
 # Database
 
-class Database(object):
-	__slots__ = ["source", "languages", "namespaces"]
+class Database(Data):
+	value_info = [
+		("source",      FLAG_VALUE),
+		("languages",   FLAG_OBJECT | FLAG_LIST),
+		("namespaces",  FLAG_OBJECT | FLAG_LIST),
+	]
 
 	def __init__(self, source):
+		Data.__init__(self)
 		self.source = source
-		self.languages = []
-		self.namespaces = []
 
 	def get_name(self):
 		for token in self.source.split():
@@ -35,54 +131,59 @@ class Database(object):
 # Language
 
 class Language(XReferee):
-	__slots__ = XReferee.__slots__ + ["name", "owner"]
+	value_info = [
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("owner",       FLAG_VALUE),
+	]
 
 	def __init__(self, *values):
 		XReferee.__init__(self)
 		self.name, self.owner = values
 
-	def flatten(self):
-		return self.name
-
 # Namespace
 
-class Namespace(object):
-	__slots__ = ["name", "owner", "types", "composites", "indexes", "tables", "views",
-	             "sequences", "functions", "operators", "opclasses"]
+class Namespace(Data):
+	value_info = [
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("owner",       FLAG_VALUE),
+		("types",       FLAG_OBJECT | FLAG_LIST),
+		("composites",  FLAG_OBJECT | FLAG_LIST),
+		("indexes",     FLAG_OBJECT | FLAG_LIST),
+		("tables",      FLAG_OBJECT | FLAG_LIST),
+		("views",       FLAG_OBJECT | FLAG_LIST),
+		("sequences",   FLAG_OBJECT | FLAG_LIST),
+		("functions",   FLAG_OBJECT | FLAG_LIST),
+		("operators",   FLAG_OBJECT | FLAG_LIST),
+		("opclasses",   FLAG_OBJECT | FLAG_LIST),
+	]
 
 	def __init__(self, *values):
+		Data.__init__(self)
 		self.name, self.owner = values
-		self.types = []
-		self.composites = []
-		self.indexes = []
-		self.tables = []
-		self.views = []
-		self.sequences = []
-		self.functions = []
-		self.operators = []
-		self.opclasses = []
-
-	def flatten(self):
-		return self.name
 
 # Type
 
 class Type(XReferee):
-	__slots__ = XReferee.__slots__ + ["namespace", "name", "owner", "notnull", "default"]
+	value_info = [
+		("namespace",   FLAG_OBJECT | FLAG_KEY),
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("owner",       FLAG_VALUE),
+		("notnull",     FLAG_VALUE),
+		("default",     FLAG_VALUE),
+	]
 
 	def __init__(self, *values):
 		XReferee.__init__(self)
 		self.namespace, self.name, self.owner, self.notnull, self.default = values
 
-	def flatten(self):
-		return self.namespace.name, self.name
-
 class Domain(Type):
-	__slots__ = Type.__slots__ + ["basetype", "constraints"]
+	value_info = Type.value_info + [
+		("basetype",    FLAG_OBJECT),
+		("constraints", FLAG_OBJECT | FLAG_LIST),
+	]
 
 	def __init__(self, *values):
 		Type.__init__(self, *values)
-		self.constraints = []
 
 	def init_base(self, basetype):
 		self.basetype = basetype
@@ -91,8 +192,16 @@ class Domain(Type):
 # Function
 
 class Function(XReferee):
-	__slots__ = XReferee.__slots__ + ["namespace", "name", "owner", "language", "rettype",
-	                                  "argtypes", "source1", "source2"]
+	value_info = [
+		("namespace",   FLAG_OBJECT | FLAG_KEY),
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("owner",       FLAG_VALUE),
+		("language",    FLAG_OBJECT),
+		("rettype",     FLAG_OBJECT),
+		("argtypes",    FLAG_OBJECT | FLAG_LIST),
+		("source1",     FLAG_VALUE),
+		("source2",     FLAG_VALUE),
+	]
 
 	def __init__(self, *values):
 		XReferee.__init__(self)
@@ -102,21 +211,19 @@ class Function(XReferee):
 		xref(self, self.rettype)
 		xref(self, self.argtypes)
 
-	def flatten(self):
-		return self.namespace.name, self.name
-
 # Relation
 
 class Relation(XReferee):
-	__slots__ = XReferee.__slots__ + ["namespace", "name", "owner", "columns"]
+	value_info = [
+		("namespace",   FLAG_OBJECT | FLAG_KEY),
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("owner",       FLAG_VALUE),
+		("columns",     FLAG_OBJECT | FLAG_DICT),
+	]
 
 	def __init__(self, *values):
 		XReferee.__init__(self)
 		self.namespace, self.name, self.owner = values
-		self.columns = {}
-
-	def flatten(self):
-		return self.namespace.name, self.name
 
 class Composite(Relation):
 	pass
@@ -125,71 +232,64 @@ class Index(Relation):
 	pass
 
 class RuleRelation(Relation):
-	__slots__ = Relation.__slots__ + ["rules"]
-
-	def __init__(self, *values):
-		Relation.__init__(self, *values)
-		self.rules = []
+	value_info = Relation.value_info + [
+		("rules",       FLAG_OBJECT | FLAG_LIST),
+	]
 
 class Table(RuleRelation):
-	__slots__ = RuleRelation.__slots__ + ["triggers", "constraints"]
-
-	def __init__(self, *values):
-		RuleRelation.__init__(self, *values)
-		self.triggers = []
-		self.constraints = []
+	value_info = RuleRelation.value_info + [
+		("triggers",    FLAG_OBJECT | FLAG_LIST),
+		("constraints", FLAG_OBJECT | FLAG_LIST),
+	]
 
 class View(RuleRelation):
 	pass
 
 # Sequence
 
-class Sequence(object):
-	__slots__ = ["namespace", "name", "owner", "increment", "minimum", "maximum"]
+class Sequence(Data):
+	value_info = [
+		("namespace",   FLAG_OBJECT | FLAG_KEY),
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("owner",       FLAG_VALUE),
+		("increment",   FLAG_VALUE),
+		("minimum",     FLAG_VALUE),
+		("maximum",     FLAG_VALUE),
+	]
 
 	def __init__(self, *values):
+		Data.__init__(self)
 		self.namespace, self.name, self.owner = values
-		self.increment = None
-		self.minimum = None
-		self.maximum = None
 
 	def init_values(self, *values):
 		self.increment, self.minimum, self.maximum = values
 
-	def flatten(self):
-		return self.namespace.name, self.name
-
 # Column
 
 class Column(XReferee):
-	__slots__ = XReferee.__slots__ + ["name", "type", "notnull", "default"]
+	value_info = [
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("type",        FLAG_OBJECT),
+		("notnull",     FLAG_VALUE),
+		("default",     FLAG_VALUE),
+	]
 
 	def __init__(self, *values):
 		XReferee.__init__(self)
 		self.name, self.type, self.notnull, self.default = values
 		xref(self, self.type)
 
-	def __eq__(self, other):
-		return self.name == other.name and flatten(self.type) == flatten(other.type) and \
-		       self.notnull == other.notnull and self.default == other.default
-
-	def __hash__(self):
-		return hash(self.name) ^ hash(flatten(self.type)) ^ hash(self.notnull) ^ \
-		       hash(self.default)
-
-	def flatten(self):
-		return self.name
-
 # Constraint
 
-class Constraint(object):
-	__slots__ = ["name", "definition"]
+class Constraint(Data):
+	value_info = [
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("definition",  FLAG_VALUE),
+	]
 
 	def __init__(self, *values):
+		Data.__init__(self)
 		self.name, self.definition = values
-
-	def flatten(self):
-		return self.name
 
 class CheckConstraint(Constraint):
 	pass
@@ -198,9 +298,12 @@ class UniqueConstraint(Constraint):
 	pass
 
 class ColumnConstraint(Constraint):
-	__slots__ = Constraint.__slots__ + ["columns"]
+	value_info = Constraint.value_info + [
+		("columns",     FLAG_OBJECT | FLAG_LIST),
+	]
 
 	def __init__(self, *values):
+		Data.__init__(self)
 		self.name, self.definition, self.columns = values
 		xref(self, self.columns)
 
@@ -214,9 +317,13 @@ class PrimaryKey(ColumnConstraint):
 	pass
 
 class ForeignKey(ColumnConstraint):
-	__slots__ = ColumnConstraint.__slots__ + ["foreign_table", "foreign_columns"]
+	value_info = ColumnConstraint.value_info + [
+		("foreign_table",   FLAG_OBJECT),
+		("foreign_columns", FLAG_OBJECT | FLAG_LIST),
+	]
 
 	def __init__(self, *values):
+		Data.__init__(self)
 		self.name, self.definition, self.columns, self.foreign_table, \
 			self.foreign_columns = values
 		xref(self, self.foreign_table)
@@ -224,46 +331,57 @@ class ForeignKey(ColumnConstraint):
 
 # Trigger
 
-class Trigger(object):
-	__slots__ = ["name", "function", "description"]
+class Trigger(Data):
+	value_info = [
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("function",    FLAG_OBJECT),
+		("description", FLAG_VALUE),
+	]
 
 	def __init__(self, *values):
+		Data.__init__(self)
 		self.name, self.function, self.description = values
 		xref(self, self.function)
 
-	def flatten(self):
-		return self.name
-
 # Rule
 
-class Rule(object):
-	__slots__ = ["name", "definition"]
+class Rule(Data):
+	value_info = [
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("definition",  FLAG_VALUE),
+	]
 
 	def __init__(self, *values):
+		Data.__init__(self)
 		self.name, self.definition = values
-
-	def flatten(self):
-		return self.name
 
 # Operator
 
-class Operator(object):
-	__slots__ = ["namespace", "name", "owner"]
+class Operator(Data):
+	value_info = [
+		("namespace",   FLAG_OBJECT | FLAG_KEY),
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("owner",       FLAG_VALUE),
+	]
 
 	def __init__(self, *values):
+		Data.__init__(self)
 		self.namespace, self.name, self.owner = values
 
-	def flatten(self):
-		return self.namespace.name, self.name
-
-class OperatorClass(object):
-	__slots__ = ["namespace", "method", "name", "owner", "intype", "default", "keytype"]
+class OperatorClass(Data):
+	value_info = [
+		("namespace",   FLAG_OBJECT | FLAG_KEY),
+		("method",      FLAG_VALUE  | FLAG_KEY),
+		("name",        FLAG_VALUE  | FLAG_KEY),
+		("owner",       FLAG_VALUE),
+		("intype",      FLAG_OBJECT),
+		("default",     FLAG_VALUE),
+		("keytype",     FLAG_OBJECT),
+	]
 
 	def __init__(self, *values):
-		self.namespace, self.method, self.name, self.owner, self.intype, self.default, \
-			self.keytype = values
+		Data.__init__(self)
+		self.namespace, self.method, self.name, self.owner, self.intype, \
+			self.default, self.keytype = values
 		xref(self, self.intype)
 		xref(self, self.keytype)
-
-	def flatten(self):
-		return self.namespace.name, self.method, self.name

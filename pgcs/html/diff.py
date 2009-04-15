@@ -19,14 +19,13 @@ class Depth(object):
 def gen_value(tbody, depth, diff, name):
 	if diff:
 		if type(diff) in type_handlers:
-			kind, classes, func = type_handlers[type(diff)]
+			kind, classes, func = type_handlers[diff.__class__]
 		else:
-			kind = ""
+			kind = str(diff.__class__)
 
 		tr = tbody.tr[("value", depth)]
-		tr.td["type"].div[:] = kind
+		tr.td["diff"].div["value"][:] = diff
 		tr.td["name"].div[:] = name
-		tr.td["diff"](colspan=len(diff.values)).div["value"][:] = diff
 
 def __xxx__gen_different_types(tbody, depth, diff, name):
 	l, r = diff.objects
@@ -72,11 +71,11 @@ def gen_named_object_list(tbody, depth, diff, listname=None):
 
 		count = 0
 
-		for obj in entry.objects:
-			if obj is None:
-				tr.td["value no"].div
+		for value, group in entry.value.values:
+			if value is None:
+				tr.td["value miss group-%d" % group].div
 			else:
-				tr.td["value yes"].div
+				tr.td["value have group-%d" % group].div
 				count += 1
 
 		if count > 1:

@@ -64,26 +64,31 @@ tr.value div.value {
 	display: none;
 }
 
-td.yes, td.no {
+td.value {
 	width: 12pt;
 }
 
-td.yes div, td.no div {
+td.value div {
+	width: 10pt;
 	height: 10pt;
 	margin: auto;
 }
 
-td.yes div, td.no div {
-	width: 10pt;
-}
-
-td.yes div {
+td.have div {
 	background-color: black;
 }
 
-td.no div {
+td.miss div {
 	background-color: #eee;
 }
+
+td.group-0 div { background-color: #f00; }
+td.group-1 div { background-color: #0f0; }
+td.group-2 div { background-color: #00f; }
+td.group-3 div { background-color: #a50; }
+td.group-4 div { background-color: #05a; }
+td.group-5 div { background-color: #5a0; }
+td.group-6 div { background-color: #0a5; }
 
 tr.depth-0 td.name div { margin-left: 0pt; }
 tr.depth-1 td.name div { margin-left: 24pt; }

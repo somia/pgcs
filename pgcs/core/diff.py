@@ -62,15 +62,16 @@ class OrderedObjectList(ObjectListValue):
 		self.lists = parse(lists, kwargs)
 		ObjectListValue.__init__(self, self.lists)
 
-class DifferentTypes(Value):
-	def __init__(self, objects=None, **kwargs):
-		self.objects = parse(objects, kwargs)
-		Value.__init__(self, [type(obj) for obj in self.objects])
+class IndexedObjectList(OrderedObjectList):
+	def __init__(self, maps=None, **kwargs):
+		maps = parse(maps, kwargs)
+		OrderedObjectList.__init__(self, [[map[i] for i in sorted(map or ())] for map in maps])
 
 class Entry(object):
 	def __init__(self, name, objects=None, **kwargs):
 		self.name = name
 		self.objects = parse(objects, kwargs)
+		self.value = Value(objects)
 
 		kind = None
 		for obj in self.objects:
@@ -115,7 +116,7 @@ class NamedObjectList(object):
 	def __nonzero__(self):
 		return bool(self.entries)
 
-class NamedHash(object):
+class __xxx__NamedHash(object):
 	__slots__ = ["object"]
 
 	def __init__(self, object):
@@ -127,6 +128,11 @@ class NamedHash(object):
 	def __eq__(self, other):
 		return self.object.name == other.object.name
 
+class __xxx___DifferentTypes(Value):
+	def __init__(self, objects=None, **kwargs):
+		self.objects = parse(objects, kwargs)
+		Value.__init__(self, [type(obj) for obj in self.objects])
+
 class __xxx__DifferentTypes(Value):
 	def __init__(self, objects=None, **kwargs):
 		self.objects = parse(objects, kwargs)
@@ -136,8 +142,8 @@ class __xxx__OrderedObjectList2WayDiff(object):
 	def __init__(self, seq1, seq2):
 		self.entries = []
 
-		hash1 = [NamedHash(o) for o in seq1]
-		hash2 = [NamedHash(o) for o in seq2]
+		hash1 = [__xxx__NamedHash(o) for o in seq1]
+		hash2 = [__xxx__NamedHash(o) for o in seq2]
 		match = difflib.SequenceMatcher(a=hash1, b=hash2)
 
 		for tag, i1, i2, j1, j2 in match.get_opcodes():
@@ -155,17 +161,12 @@ class __xxx__OrderedObjectList2WayDiff(object):
 					obj2 = seq2[j1 + n]
 
 					if type(obj1) != type(obj2):
-						diff = DifferentTypes(obj1, obj2)
+						diff = __xxx__DifferentTypes(obj1, obj2)
 					else:
 						diff = diff_types[type(obj1)](obj1, obj2)
 
 					if diff:
 						self.entries.append((obj1.name, 0, diff))
-
-class IndexedObjectList(OrderedObjectList):
-	def __init__(self, maps=None, **kwargs):
-		maps = parse(maps, kwargs)
-		OrderedObjectList.__init__(self, [[map[i] for i in sorted(map or ())] for map in maps])
 
 class Any(object):
 	def __init__(self, objects):

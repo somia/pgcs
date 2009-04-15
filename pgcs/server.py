@@ -62,7 +62,7 @@ def main():
 	config = sys.argv[2]
 
 	with open(config) as file:
-		sources = file.readlines()
+		sources = [line for line in file if not line.startswith("#")]
 
 	databases = core.load.load_databases(sources)
 	diff = core.diff.diff_databases(databases)
