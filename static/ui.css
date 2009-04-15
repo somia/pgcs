@@ -82,13 +82,13 @@ td.miss div {
 	background-color: #eee;
 }
 
-td.group-0 div { background-color: #f00; }
-td.group-1 div { background-color: #0f0; }
-td.group-2 div { background-color: #00f; }
-td.group-3 div { background-color: #a50; }
-td.group-4 div { background-color: #05a; }
-td.group-5 div { background-color: #5a0; }
-td.group-6 div { background-color: #0a5; }
+td.color-0 div { background-color: #00f; }
+td.color-1 div { background-color: #0f0; }
+td.color-2 div { background-color: #f00; }
+td.color-3 div { background-color: #a50; }
+td.color-4 div { background-color: #05a; }
+td.color-5 div { background-color: #5a0; }
+td.color-6 div { background-color: #0a5; }
 
 tr.depth-0 td.name div { margin-left: 0pt; }
 tr.depth-1 td.name div { margin-left: 24pt; }

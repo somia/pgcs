@@ -71,12 +71,36 @@ def gen_named_object_list(tbody, depth, diff, listname=None):
 
 		count = 0
 
+		groups = {}
 		for value, group in entry.value.values:
+			if value is not None:
+				count = groups.get(group, 0)
+				groups[group] = count + 1
+
+		def get_sorting(item):
+			group, count = item
+			return -count
+
+		def get_group(item):
+			group, count = item
+			return group
+
+		colors = [get_group(i) for i in sorted(groups.iteritems(), key=get_sorting)]
+
+		for value, group in entry.value.values:
+			classes = ["value"]
+
 			if value is None:
-				tr.td["value miss group-%d" % group].div
+				classes.append("miss")
 			else:
-				tr.td["value have group-%d" % group].div
+				classes.append("have")
+
+				color = colors.index(group)
+				classes.append("color-%d" % color)
+
 				count += 1
+
+			tr.td[classes].div
 
 		if count > 1:
 			kind, classes, func = type_handlers[type(entry.diff)]
