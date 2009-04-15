@@ -6,97 +6,91 @@
 	font-size: 10pt;
 }
 
-table {
-	margin-left: auto;
-	margin-right: auto;
-	border-collapse: collapse;
+.columns {
+	position: absolute;
+	left: 600pt;
 }
 
-th {
-	font-weight: normal;
+.head .columns {
+	position: absolute;
+	left: 624pt;
 }
 
-th div {
+.column-0 { position: absolute; left: 0pt; }
+.column-1 { position: absolute; left: 24pt; }
+.column-2 { position: absolute; left: 48pt; }
+.column-3 { position: absolute; left: 72pt; }
+.column-4 { position: absolute; left: 96pt; }
+.column-5 { position: absolute; left: 120pt; }
+.column-6 { position: absolute; left: 144pt; }
+.column-7 { position: absolute; left: 168pt; }
+
+.database .head {
+	height: 10pt;
+}
+
+.database .head .columns span {
 	width: 24pt;
 	overflow-x: hidden;
 	font-size: 7pt;
 }
 
-tr.list-entry:hover {
-	background-color: #eee;
+.database .body {
+	margin-left: 102pt;
 }
 
-tr.value:hover {
-	background-color: #eee;
-}
-
-td.db div {
-	width: 24px;
-	overflow-x: hidden;
-}
-
-td.link div {
-	width: 48px;
-}
-
-td.type div {
+.type {
 	font-size: 8pt;
 	margin-right: 6pt;
 	color: #aaa;
+	position: absolute;
+	left: 6pt;
+	width: 96pt;
+	overflow-x: hidden;
+	white-space: nowrap;
 }
 
-td.name div {
-	font-family: monospace;
-}
-
-tr.list-head td.name div {
+.list .head .name {
 	font-family: sans-serif;
 	font-size: 8pt;
 	color: #aaa;
 }
 
-tr.value td.name div {
+.list .entry div {
+	margin-left: 24pt;
+}
+
+.list .entry .name {
+	font-family: monospace;
+}
+
+.value .name {
 	font-family: sans-serif;
 	color: blue;
 }
 
-tr.value div.value {
+.value .diff {
 	display: none;
 }
 
-td.value {
-	width: 12pt;
-}
-
-td.value div {
+.columns span div {
 	width: 10pt;
 	height: 10pt;
 	margin: auto;
 }
 
-td.have div {
+.have div {
 	background-color: black;
 }
 
-td.miss div {
+.miss div {
 	background-color: #eee;
 }
 
-td.color-0 div { background-color: #00f; }
-td.color-1 div { background-color: #0f0; }
-td.color-2 div { background-color: #f00; }
-td.color-3 div { background-color: #a50; }
-td.color-4 div { background-color: #05a; }
-td.color-5 div { background-color: #5a0; }
-td.color-6 div { background-color: #0a5; }
-
-tr.depth-0 td.name div { margin-left: 0pt; }
-tr.depth-1 td.name div { margin-left: 24pt; }
-tr.depth-2 td.name div { margin-left: 48pt; }
-tr.depth-3 td.name div { margin-left: 72pt; }
-tr.depth-4 td.name div { margin-left: 96pt; }
-tr.depth-5 td.name div { margin-left: 120pt; }
-tr.depth-6 td.name div { margin-left: 144pt; }
-tr.depth-7 td.name div { margin-left: 168pt; }
-tr.depth-8 td.name div { margin-left: 192pt; }
-tr.depth-9 td.name div { margin-left: 216pt; }
+.color-0 div { background-color: #00f; }
+.color-1 div { background-color: #0f0; }
+.color-2 div { background-color: #f00; }
+.color-3 div { background-color: #a50; }
+.color-4 div { background-color: #05a; }
+.color-5 div { background-color: #5a0; }
+.color-6 div { background-color: #0a5; }

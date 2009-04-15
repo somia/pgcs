@@ -4,283 +4,224 @@ core = pgcs.core
 
 from . import tags
 
-class Depth(object):
-	__slots__ = ["_value"]
+def gen_columns(parent, diff):
+	count = 0
 
-	def __init__(self, value=0):
-		self._value = value
+	groups = {}
+	for value, group in diff.values:
+		if value is not None:
+			count = groups.get(group, 0)
+			groups[group] = count + 1
 
-	def __add__(self, value):
-		return Depth(self._value + value)
+	def get_sorting(item):
+		group, count = item
+		return -count
 
-	def __str__(self):
-		return "depth-%d" % self._value
+	def get_group(item):
+		group, count = item
+		return group
 
-def gen_value(tbody, depth, diff, name):
-	if diff:
-		if type(diff) in type_handlers:
-			kind, classes, func = type_handlers[diff.__class__]
+	colors = [get_group(i) for i in sorted(groups.iteritems(), key=get_sorting)]
+
+	span = parent.span["columns"]
+
+	for column, (value, group) in enumerate(diff.values):
+		classes = ["column-%d" % column]
+
+		if value is None:
+			classes.append("miss")
 		else:
-			kind = str(diff.__class__)
+			classes.append("have")
 
-		tr = tbody.tr[("value", depth)]
-		tr.td["diff"].div["value"][:] = diff
-		tr.td["name"].div[:] = name
+			color = colors.index(group)
+			classes.append("color-%d" % color)
 
-def __xxx__gen_different_types(tbody, depth, diff, name):
-	l, r = diff.objects
-	gen_value(tbody, depth, core.diff.Value(type(l), type(r)), name)
+			count += 1
 
-def gen_object_list_head(tbody, depth, diff, listname):
-	if diff and listname:
-		tr = tbody.tr[("list-head", depth)]
-		tr.td
-		tr.td["name"].div[:] = listname
+		span.span[classes].div
 
-		depth = depth + 1
+	return count
 
-	return depth
+def gen_value(parent, diff, name):
+	if diff:
+		div = parent.div["value"]
+		div.span["name"][:] = name
+		gen_columns(div, diff)
+		div.div["diff"][:] = diff
 
-def __xxx__gen_object_list_body(tbody, depth, seq, listname):
-	for name, what, obj in seq:
-		kind, classes, func = type_handlers[type(obj)]
+def gen_object_list_head(parent, diff, name):
+	div = parent.div["list"]
+	if name:
+		head = div.div["head"]
+		head.span["name"][:] = name
+	return div
 
-		tr = tbody.tr[classes + [depth]]
-		tr.td["type"].div[:] = kind
-		tr.td["name"].div[:] = name
+def gen_named_object_list(parent, diff, name=None):
+	if diff:
+		head = gen_object_list_head(parent, diff, name)
 
-		if func:
-			func(tbody, depth, obj)
-		elif what < 0:
-			tr.td["left yes"].div
-			tr.td["right no"].div
-		elif what > 0:
-			tr.td["left no"].div
-			tr.td["right yes"].div
+		for entry in diff.entries:
+			kind, func = diff_types[type(entry.diff)]
 
-def gen_named_object_list(tbody, depth, diff, listname=None):
-	if not diff:
-		return
+			div = head.div["entry"]
+			div.span["type"][:] = kind
+			div.span["name"][:] = entry.name
 
-	depth = gen_object_list_head(tbody, depth, diff, listname)
+			count = gen_columns(div, entry.value)
 
-	for entry in diff.entries:
-		tr = tbody.tr[("list-entry", depth)] # TODO: more classes
-		tr.td["type"].div # TODO: content
-		tr.td["name"].div[:] = entry.name
+			if count > 1:
+				func(div, entry.diff)
 
-		count = 0
-
-		groups = {}
-		for value, group in entry.value.values:
-			if value is not None:
-				count = groups.get(group, 0)
-				groups[group] = count + 1
-
-		def get_sorting(item):
-			group, count = item
-			return -count
-
-		def get_group(item):
-			group, count = item
-			return group
-
-		colors = [get_group(i) for i in sorted(groups.iteritems(), key=get_sorting)]
-
-		for value, group in entry.value.values:
-			classes = ["value"]
-
-			if value is None:
-				classes.append("miss")
-			else:
-				classes.append("have")
-
-				color = colors.index(group)
-				classes.append("color-%d" % color)
-
-				count += 1
-
-			tr.td[classes].div
-
-		if count > 1:
-			kind, classes, func = type_handlers[type(entry.diff)]
-			func(tbody, depth, entry.diff)
-
-def gen_ordered_object_list(tbody, depth, diff, listname):
-	gen_value(tbody, depth, diff, listname)
+def gen_ordered_object_list(parent, diff, name):
+	gen_value(parent, diff, name)
 
 # Database
 
 def gen_database(tree, diff):
-	table = tree.table["database"]
-	gen_database_head(table, diff)
-	gen_database_body(table, diff)
+	div = tree.div["database"]
+	gen_database_head(div, diff)
+	gen_database_body(div, diff)
 
-def gen_database_head(table, diff):
-	tr = table.thead.tr
-	tr.th(colspan=2)
-	for obj in diff.objects:
-		tr.th["db"].div[:] = obj.get_name()
+def gen_database_head(parent, diff):
+	div = parent.div["head"]
+	span = div.span["columns"]
+	for column, obj in enumerate(diff.objects):
+		span.span[("column-%d" % column)][:] = obj.get_name()
 
-def gen_database_body(table, diff):
-	depth = Depth()
-
-	tbody = table.tbody
-	gen_named_object_list(tbody, depth, diff.languages)
-	gen_named_object_list(tbody, depth, diff.namespaces)
+def gen_database_body(parent, diff):
+	div = parent.div["body"]
+	gen_named_object_list(div, diff.languages)
+	gen_named_object_list(div, diff.namespaces)
 
 # Language
 
-def gen_language(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
+def gen_language(div, diff):
+	gen_value(div, diff.owner, "owner")
 
 # Namespace
 
-def gen_namespace(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
-	gen_named_object_list(tbody, depth + 1, diff.types)
-	gen_named_object_list(tbody, depth + 1, diff.composites)
-	gen_named_object_list(tbody, depth + 1, diff.indexes)
-	gen_named_object_list(tbody, depth + 1, diff.tables)
-	gen_named_object_list(tbody, depth + 1, diff.views)
-	gen_named_object_list(tbody, depth + 1, diff.sequences)
-	gen_named_object_list(tbody, depth + 1, diff.functions)
-	gen_named_object_list(tbody, depth + 1, diff.operators)
-	gen_named_object_list(tbody, depth + 1, diff.opclasses)
+def gen_namespace(div, diff):
+	gen_value(div, diff.owner, "owner")
+	gen_named_object_list(div, diff.types)
+	gen_named_object_list(div, diff.composites)
+	gen_named_object_list(div, diff.indexes)
+	gen_named_object_list(div, diff.tables)
+	gen_named_object_list(div, diff.views)
+	gen_named_object_list(div, diff.sequences)
+	gen_named_object_list(div, diff.functions)
+	gen_named_object_list(div, diff.operators)
+	gen_named_object_list(div, diff.opclasses)
 
 # Type
 
-def gen_type(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
-	gen_value(tbody, depth + 1, diff.notnull, "notnull")
-	gen_value(tbody, depth + 1, diff.default, "default")
+def gen_type(div, diff):
+	gen_value(div, diff.owner, "owner")
+	gen_value(div, diff.notnull, "notnull")
+	gen_value(div, diff.default, "default")
 
-def gen_domain(tbody, depth, diff):
-	gen_type(tbody, depth, diff)
-	gen_value(tbody, depth + 1, diff.basetype, "basetype")
-	gen_named_object_list(tbody, depth + 1, diff.constraints, "constraints")
+def gen_domain(div, diff):
+	gen_type(div, diff)
+	gen_value(div, diff.basetype, "basetype")
+	gen_named_object_list(div, diff.constraints, "constraints")
 
 # Function
 
-def gen_function(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
-	gen_value(tbody, depth + 1, diff.language, "language")
-	gen_value(tbody, depth + 1, diff.rettype, "rettype")
-	gen_value(tbody, depth + 1, diff.argtypes, "argtypes")
-	gen_value(tbody, depth + 1, diff.source1, "source1")
-	gen_value(tbody, depth + 1, diff.source2, "source2")
+def gen_function(div, diff):
+	gen_value(div, diff.owner, "owner")
+	gen_value(div, diff.language, "language")
+	gen_value(div, diff.rettype, "rettype")
+	gen_value(div, diff.argtypes, "argtypes")
+	gen_value(div, diff.source1, "source1")
+	gen_value(div, diff.source2, "source2")
 
 # Relation
 
-def gen_relation(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
-	gen_ordered_object_list(tbody, depth + 1, diff.columns, "columns")
+def gen_relation(div, diff):
+	gen_value(div, diff.owner, "owner")
+	gen_ordered_object_list(div, diff.columns, "columns")
 
-def gen_rule_relation(tbody, depth, diff):
-	gen_relation(tbody, depth, diff)
-	gen_named_object_list(tbody, depth + 1, diff.rules, "rules")
+def gen_rule_relation(div, diff):
+	gen_relation(div, diff)
+	gen_named_object_list(div, diff.rules, "rules")
 
-def gen_table(tbody, depth, diff):
-	gen_rule_relation(tbody, depth, diff)
-	gen_named_object_list(tbody, depth + 1, diff.triggers, "triggers")
-	gen_named_object_list(tbody, depth + 1, diff.constraints, "constraints")
+def gen_table(div, diff):
+	gen_rule_relation(div, diff)
+	gen_named_object_list(div, diff.triggers, "triggers")
+	gen_named_object_list(div, diff.constraints, "constraints")
 
 # Sequence
 
-def gen_sequence(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
-	gen_value(tbody, depth + 1, diff.increment, "increment")
-	gen_value(tbody, depth + 1, diff.minimum, "minimum")
-	gen_value(tbody, depth + 1, diff.maximum, "maximum")
+def gen_sequence(div, diff):
+	gen_value(div, diff.owner, "owner")
+	gen_value(div, diff.increment, "increment")
+	gen_value(div, diff.minimum, "minimum")
+	gen_value(div, diff.maximum, "maximum")
 
 # Column
 
-def gen_column(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.type, "type")
-	gen_value(tbody, depth + 1, diff.notnull, "notnull")
-	gen_value(tbody, depth + 1, diff.default, "default")
+def gen_column(div, diff):
+	gen_value(div, diff.type, "type")
+	gen_value(div, diff.notnull, "notnull")
+	gen_value(div, diff.default, "default")
 
 # Constraint
 
-def gen_constraint(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.definition, "definition")
+def gen_constraint(div, diff):
+	gen_value(div, diff.definition, "definition")
 
-def gen_column_constraint(tbody, depth, diff):
-	gen_constraint(tbody, depth, diff)
-	gen_ordered_object_list(tbody, depth + 1, diff.columns, "columns")
+def gen_column_constraint(div, diff):
+	gen_constraint(div, diff)
+	gen_ordered_object_list(div, diff.columns, "columns")
 
-def gen_foreign_key(tbody, depth, diff):
-	gen_column_constraint(tbody, depth, diff)
-	gen_value(tbody, depth + 1, diff.foreign_table, "foreign-table")
-	gen_ordered_object_list(tbody, depth + 1, diff.foreign_columns, "foreign-columns")
+def gen_foreign_key(div, diff):
+	gen_column_constraint(div, diff)
+	gen_value(div, diff.foreign_table, "foreign-table")
+	gen_ordered_object_list(div, diff.foreign_columns, "foreign-columns")
 
 # Trigger
 
-def gen_trigger(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.function, "function")
-	gen_value(tbody, depth + 1, diff.description, "description")
+def gen_trigger(div, diff):
+	gen_value(div, diff.function, "function")
+	gen_value(div, diff.description, "description")
 
 # Rule
 
-def gen_rule(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.definition, "definition")
+def gen_rule(div, diff):
+	gen_value(div, diff.definition, "definition")
 
 # Operator
 
-def gen_operator(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
+def gen_operator(div, diff):
+	gen_value(div, diff.owner, "owner")
 
-def gen_operator_class(tbody, depth, diff):
-	gen_value(tbody, depth + 1, diff.owner, "owner")
-	gen_value(tbody, depth + 1, diff.intype, "intype")
-	gen_value(tbody, depth + 1, diff.default, "default")
-	gen_value(tbody, depth + 1, diff.keytype, "keytype")
+def gen_operator_class(div, diff):
+	gen_value(div, diff.owner, "owner")
+	gen_value(div, diff.intype, "intype")
+	gen_value(div, diff.default, "default")
+	gen_value(div, diff.keytype, "keytype")
 
-type_handlers = {
-	core.data.CheckColumnConstraint:  ("check-column-constraint",  ["miss"], None),
-	core.data.CheckConstraint:        ("check-constraint",         ["miss"], None),
-	core.data.Column:                 ("column",                   ["miss"], None),
-	core.data.Composite:              ("composite",                ["miss"], None),
-	core.data.Domain:                 ("domain",                   ["miss"], None),
-	core.data.ForeignKey:             ("foreign-key",              ["miss"], None),
-	core.data.Function:               ("function",                 ["miss"], None),
-	core.data.Index:                  ("index",                    ["miss"], None),
-	core.data.Language:               ("language",                 ["miss"], None),
-	core.data.Namespace:              ("namespace",                ["miss"], None),
-	core.data.Operator:               ("operator",                 ["miss"], None),
-	core.data.OperatorClass:          ("operator-class",           ["miss"], None),
-	core.data.PrimaryKey:             ("primary-key",              ["miss"], None),
-	core.data.Rule:                   ("rule",                     ["miss"], None),
-	core.data.Sequence:               ("sequence",                 ["miss"], None),
-	core.data.Table:                  ("table",                    ["miss"], None),
-	core.data.Trigger:                ("trigger",                  ["miss"], None),
-	core.data.Type:                   ("type",                     ["miss"], None),
-	core.data.UniqueColumnConstraint: ("unique-column-constraint", ["miss"], None),
-	core.data.UniqueConstraint:       ("unique-constraint",        ["miss"], None),
-	core.data.View:                   ("view",                     ["miss"], None),
-
-	core.diff.CheckColumnConstraint:  ("check-column-constraint",  [], gen_column_constraint),
-	core.diff.CheckConstraint:        ("check-constraint",         [], gen_constraint),
-	core.diff.Column:                 ("column",                   [], gen_column),
-	core.diff.Composite:              ("composite",                [], gen_relation),
-	core.diff.__xxx__DifferentTypes:  ("different-type",           [], __xxx__gen_different_types),
-	core.diff.Domain:                 ("domain",                   [], gen_domain),
-	core.diff.ForeignKey:             ("foreign-key",              [], gen_foreign_key),
-	core.diff.Function:               ("function",                 [], gen_function),
-	core.diff.Index:                  ("index",                    [], gen_relation),
-	core.diff.Language:               ("language",                 [], gen_language),
-	core.diff.Namespace:              ("namespace",                [], gen_namespace),
-	core.diff.Operator:               ("operator",                 [], gen_operator),
-	core.diff.OperatorClass:          ("operator-class",           [], gen_operator_class),
-	core.diff.PrimaryKey:             ("primary-key",              [], gen_column_constraint),
-	core.diff.Rule:                   ("rule",                     [], gen_rule),
-	core.diff.Sequence:               ("sequence",                 [], gen_sequence),
-	core.diff.Table:                  ("table",                    [], gen_table),
-	core.diff.Trigger:                ("trigger",                  [], gen_trigger),
-	core.diff.Type:                   ("type",                     [], gen_type),
-	core.diff.UniqueColumnConstraint: ("unique-column-constraint", [], gen_column_constraint),
-	core.diff.UniqueConstraint:       ("unique-constraint",        [], gen_constraint),
-	core.diff.View:                   ("view",                     [], gen_rule_relation),
+diff_types = {
+	core.diff.CheckColumnConstraint:  ("check-column-constraint",  gen_column_constraint),
+	core.diff.CheckConstraint:        ("check-constraint",         gen_constraint),
+	core.diff.Column:                 ("column",                   gen_column),
+	core.diff.Composite:              ("composite",                gen_relation),
+	core.diff.Domain:                 ("domain",                   gen_domain),
+	core.diff.ForeignKey:             ("foreign-key",              gen_foreign_key),
+	core.diff.Function:               ("function",                 gen_function),
+	core.diff.Index:                  ("index",                    gen_relation),
+	core.diff.Language:               ("language",                 gen_language),
+	core.diff.Namespace:              ("namespace",                gen_namespace),
+	core.diff.Operator:               ("operator",                 gen_operator),
+	core.diff.OperatorClass:          ("operator-class",           gen_operator_class),
+	core.diff.PrimaryKey:             ("primary-key",              gen_column_constraint),
+	core.diff.Rule:                   ("rule",                     gen_rule),
+	core.diff.Sequence:               ("sequence",                 gen_sequence),
+	core.diff.Table:                  ("table",                    gen_table),
+	core.diff.Trigger:                ("trigger",                  gen_trigger),
+	core.diff.Type:                   ("type",                     gen_type),
+	core.diff.UniqueColumnConstraint: ("unique-column-constraint", gen_column_constraint),
+	core.diff.UniqueConstraint:       ("unique-constraint",        gen_constraint),
+	core.diff.View:                   ("view",                     gen_rule_relation),
 }
 
 def generate(diff):
