@@ -55,7 +55,7 @@ class ObjectValue(Value):
 class ObjectListValue(Value):
 	def __init__(self, lists=None, **kwargs):
 		lists = parse(lists, kwargs)
-		Value.__init__(self, [[data.flatten(obj) for obj in seq or ()] for seq in lists])
+		Value.__init__(self, [[data.flatten(obj) for obj in (seq or ())] for seq in lists])
 
 class OrderedObjectList(ObjectListValue):
 	def __init__(self, lists=None, **kwargs):

@@ -50,23 +50,19 @@ def gen_value(parent, diff, name):
 		gen_columns(div, diff)
 		div.div["diff"][:] = diff
 
-def gen_object_list_head(parent, diff, name):
-	div = parent.div["list"]
-	if name:
-		head = div.div["head"]
-		head.span["name"][:] = name
-	return div
-
 def gen_named_object_list(parent, diff, name=None):
 	if diff:
-		head = gen_object_list_head(parent, diff, name)
+		element = parent.div["list"]
+
+		if name:
+			element.div["head"].span["name"][:] = name
 
 		for entry in diff.entries:
 			kind, func = diff_types[type(entry.diff)]
 
 			count = version_count(entry.value)
 
-			div = head.div["entry"]
+			div = element.div["entry"]
 
 			if count > 1:
 				div.div["expander"][:] = "+"
@@ -81,7 +77,27 @@ def gen_named_object_list(parent, diff, name=None):
 				func(children, entry.diff)
 
 def gen_ordered_object_list(parent, diff, name):
-	gen_value(parent, diff, name)
+	if diff:
+		element = parent.div["list"]
+
+		head = element.div["head"]
+		if name:
+			head.span["name"][:] = name
+		gen_columns(head, diff)
+
+		table = element.table
+
+		for i in xrange(max([(l and len(l)) for l in diff.lists]) or 0):
+			tr = table.tr
+
+			for l in diff.lists:
+				td = tr.td
+
+				if l is not None and i < len(l):
+					o = l[i]
+					td[:] = str(o)
+				else:
+					td[:] = "X"
 
 # Database
 

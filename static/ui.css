@@ -25,10 +25,6 @@
 .column-6 { position: absolute; left: 144pt; }
 .column-7 { position: absolute; left: 168pt; }
 
-.head {
-	background-color: #eee;
-}
-
 .database .head {
 	height: 10pt;
 }
