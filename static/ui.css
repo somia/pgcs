@@ -25,6 +25,10 @@
 .column-6 { position: absolute; left: 144pt; }
 .column-7 { position: absolute; left: 168pt; }
 
+.head {
+	background-color: #eee;
+}
+
 .database .head {
 	height: 10pt;
 }
@@ -36,7 +40,11 @@
 }
 
 .database .body {
-	margin-left: 102pt;
+	margin-left: 114pt;
+}
+
+.children {
+	display: none;
 }
 
 .type {
@@ -58,6 +66,16 @@
 
 .list .entry div {
 	margin-left: 24pt;
+}
+
+.expander {
+	color: blue;
+	position: absolute;
+	left: 76pt;
+	width: 12pt;
+	height: 12pt;
+	background-color: black;
+	color: white;
 }
 
 .list .entry .name {

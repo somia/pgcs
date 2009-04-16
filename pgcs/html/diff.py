@@ -4,9 +4,14 @@ core = pgcs.core
 
 from . import tags
 
-def gen_columns(parent, diff):
+def version_count(diff):
 	count = 0
+	for value, group in diff.values:
+		if value is not None:
+			count += 1
+	return count
 
+def gen_columns(parent, diff):
 	groups = {}
 	for value, group in diff.values:
 		if value is not None:
@@ -36,11 +41,7 @@ def gen_columns(parent, diff):
 			color = colors.index(group)
 			classes.append("color-%d" % color)
 
-			count += 1
-
 		span.span[classes].div
-
-	return count
 
 def gen_value(parent, diff, name):
 	if diff:
@@ -63,14 +64,21 @@ def gen_named_object_list(parent, diff, name=None):
 		for entry in diff.entries:
 			kind, func = diff_types[type(entry.diff)]
 
+			count = version_count(entry.value)
+
 			div = head.div["entry"]
+
+			if count > 1:
+				div.div["expander"][:] = "+"
+
 			div.span["type"][:] = kind
 			div.span["name"][:] = entry.name
 
-			count = gen_columns(div, entry.value)
+			gen_columns(div, entry.value)
 
 			if count > 1:
-				func(div, entry.diff)
+				children = div.div["children"]
+				func(children, entry.diff)
 
 def gen_ordered_object_list(parent, diff, name):
 	gen_value(parent, diff, name)
@@ -83,13 +91,14 @@ def gen_database(tree, diff):
 	gen_database_body(div, diff)
 
 def gen_database_head(parent, diff):
-	div = parent.div["head"]
-	span = div.span["columns"]
+	span = parent.div["head"].span["columns"]
 	for column, obj in enumerate(diff.objects):
 		span.span[("column-%d" % column)][:] = obj.get_name()
 
 def gen_database_body(parent, diff):
-	div = parent.div["body"]
+	body = parent.div["body"]
+	body.div["expander"][:] = "+"
+	div = body.div["children"]
 	gen_named_object_list(div, diff.languages)
 	gen_named_object_list(div, diff.namespaces)
 
