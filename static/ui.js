@@ -1,9 +1,15 @@
 $(function() {
 	$("#content").load("/dynamic", null, function() {
 		$(".expander").click(function() {
-			$(this).siblings(".children").show();
-			$(this).siblings(".columns").hide();
-			$(this).hide();
+			if ($(this).text() == "+") {
+				$(this).siblings(".children").show();
+				$(this).siblings(".columns").hide();
+				$(this).text("-");
+			} else {
+				$(this).siblings(".children").hide();
+				$(this).siblings(".columns").show();
+				$(this).text("+");
+			}
 		});
 
 		$(".value").click(function() {
