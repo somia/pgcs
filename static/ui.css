@@ -8,12 +8,12 @@
 
 .columns {
 	position: absolute;
-	left: 600pt;
+	left: 576pt;
 }
 
 .head .columns {
 	position: absolute;
-	left: 624pt;
+	left: 588pt;
 }
 
 .column-0 { position: absolute; left: 0pt; }
@@ -24,8 +24,11 @@
 .column-5 { position: absolute; left: 120pt; }
 .column-6 { position: absolute; left: 144pt; }
 .column-7 { position: absolute; left: 168pt; }
+.column-8 { position: absolute; left: 192pt; }
+.column-9 { position: absolute; left: 216pt; }
 
 .database .head {
+	text-align: center;
 	height: 10pt;
 }
 
@@ -33,6 +36,7 @@
 	width: 24pt;
 	overflow-x: hidden;
 	font-size: 7pt;
+	display: block;
 }
 
 .database .body {
