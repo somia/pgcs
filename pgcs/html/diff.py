@@ -4,13 +4,6 @@ core = pgcs.core
 
 from . import tags
 
-def version_count(diff):
-	count = 0
-	for value, group in diff.values:
-		if value is not None:
-			count += 1
-	return count
-
 def gen_columns(parent, diff):
 	groups = {}
 	for value, group in diff.values:
@@ -60,11 +53,9 @@ def gen_named_object_list(parent, diff, name=None):
 		for entry in diff.entries:
 			kind, func = diff_types[type(entry.diff)]
 
-			count = version_count(entry.value)
-
 			div = element.div["entry"]
 
-			if count > 1:
+			if entry.diff:
 				div.div["expander"][:] = "+"
 
 			div.span["type"][:] = kind
@@ -72,7 +63,7 @@ def gen_named_object_list(parent, diff, name=None):
 
 			gen_columns(div, entry.value)
 
-			if count > 1:
+			if entry.diff:
 				children = div.div["children"]
 				func(children, entry.diff)
 
@@ -81,13 +72,17 @@ def gen_ordered_object_list(parent, diff, name):
 		element = parent.div["list"]
 
 		head = element.div["head"]
-		if name:
-			head.span["name"][:] = name
-		gen_columns(head, diff)
+		head.span["name"][:] = name
+
+		def listlen(l):
+			if l is None:
+				return 0
+			else:
+				return len(l)
 
 		table = element.table
 
-		for i in xrange(max([(l and len(l)) for l in diff.lists]) or 0):
+		for i in xrange(max([listlen(l) for l in diff.lists])):
 			tr = table.tr
 
 			for l in diff.lists:

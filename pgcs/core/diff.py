@@ -28,7 +28,7 @@ class Value(object):
 		for obj in values:
 			group = -1
 
-			if obj is not None:
+			if obj:
 				found = False
 
 				for group in xrange(len(prototypes)):
