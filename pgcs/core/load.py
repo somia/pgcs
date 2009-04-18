@@ -21,6 +21,8 @@ def load_database(source):
 	return db
 
 def populate_database(db, cursor):
+	db_prefix = "%s:" % db.get_name()
+
 	roles = {}
 	languages = {}
 	namespaces = {}
@@ -141,7 +143,7 @@ def populate_database(db, cursor):
 			cursor.execute("""SELECT 1 FROM %s LIMIT 1""" % full_name)
 		except:
 			cursor.execute("""ROLLBACK TO SAVEPOINT table_savepoint""")
-			print "Failed to access table", full_name
+			print db_prefix, "Failed to access table", full_name
 		else:
 			table.init_content(cursor.fetchone() is not None)
 			cursor.execute("""RELEASE SAVEPOINT table_savepoint""")
@@ -167,7 +169,7 @@ def populate_database(db, cursor):
 			                  FROM %s""" % full_name)
 		except:
 			cursor.execute("""ROLLBACK TO SAVEPOINT sequence""")
-			print "Failed to access sequence", full_name
+			print db_prefix, "Failed to access sequence", full_name
 		else:
 			sequence.init_values(*cursor.fetchone())
 			cursor.execute("""RELEASE SAVEPOINT sequence""")
