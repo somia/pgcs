@@ -242,6 +242,13 @@ class Table(RuleRelation):
 		("constraints", FLAG_OBJECT | FLAG_LIST),
 	]
 
+	def __init__(self, *values):
+		RuleRelation.__init__(self, *values)
+		self.has_content = None
+
+	def init_content(self, has_content):
+		self.has_content = has_content
+
 class View(RuleRelation):
 	pass
 

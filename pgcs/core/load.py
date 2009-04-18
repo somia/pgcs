@@ -26,6 +26,7 @@ def populate_database(db, cursor):
 	namespaces = {}
 	types = {}
 	relations = {}
+	tables = []
 	sequences = []
 	functions = {}
 	operators = {}
@@ -118,6 +119,9 @@ def populate_database(db, cursor):
 		relation = classtype(ns, name, roles[owner_oid])
 		relations[oid] = relation
 		getattr(ns, listname).append(relation)
+		if kind in "rt" and not ns.name.startswith("pg_"):
+			full_name = '"%s"."%s"' % (ns.name, name)
+			tables.append((full_name, relation))
 
 	cursor.execute("""SELECT attrelid, attname, atttypid, attnum, attnotnull,
 	                         pg_get_expr(adbin, attrelid)
@@ -130,6 +134,17 @@ def populate_database(db, cursor):
 		relation_oid, name, type_oid, num, notnull, default = row
 		column = data.Column(name, types[type_oid], notnull, default)
 		relations[relation_oid].columns[num] = column
+
+	for full_name, table in tables:
+		cursor.execute("""SAVEPOINT table_savepoint""")
+		try:
+			cursor.execute("""SELECT 1 FROM %s LIMIT 1""" % full_name)
+		except:
+			cursor.execute("""ROLLBACK TO SAVEPOINT table_savepoint""")
+			print "Failed to access table", full_name
+		else:
+			table.init_content(cursor.fetchone() is not None)
+			cursor.execute("""RELEASE SAVEPOINT table_savepoint""")
 
 	# Sequences
 
