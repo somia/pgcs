@@ -26,6 +26,8 @@ def gen_columns(parent, diff):
 	for column, (value, group) in enumerate(diff.values):
 		classes = ["column-%d" % column]
 
+		content = ""
+
 		if value is None:
 			classes.append("miss")
 		else:
@@ -34,7 +36,15 @@ def gen_columns(parent, diff):
 			color = colors.index(group)
 			classes.append("color-%d" % color)
 
-		span.span[classes].div
+			if isinstance(value, core.data.Table):
+				if value.has_content is core.data.unknown:
+					content = "?"
+				elif value.has_content:
+					content = "1"
+				else:
+					content = "0"
+
+		span.span[classes].div[:] = content
 
 def gen_value(parent, diff, name):
 	if diff:

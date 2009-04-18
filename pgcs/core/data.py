@@ -4,6 +4,8 @@ FLAG_LIST    = 0x2
 FLAG_DICT    = 0x4
 FLAG_KEY     = 0x8
 
+unknown = object()
+
 class Data(object):
 	def __init__(self):
 		for name, flags in self.value_info:
@@ -244,7 +246,7 @@ class Table(RuleRelation):
 
 	def __init__(self, *values):
 		RuleRelation.__init__(self, *values)
-		self.has_content = None
+		self.has_content = unknown
 
 	def init_content(self, has_content):
 		self.has_content = has_content
