@@ -65,7 +65,7 @@ def gen_named_object_list(parent, diff, name=None):
 
 			div = element.div["entry"]
 
-			if entry.diff:
+			if entry.value:
 				div.div["expander"][:] = "+"
 
 			div.span["type"][:] = kind
@@ -73,7 +73,7 @@ def gen_named_object_list(parent, diff, name=None):
 
 			gen_columns(div, entry.value)
 
-			if entry.diff:
+			if entry.value:
 				children = div.div["children"]
 				func(children, entry.diff)
 
