@@ -1,4 +1,5 @@
 import contextlib
+import functools
 
 import psycopg2
 import psycopg2.extensions
@@ -6,21 +7,25 @@ import psycopg2.extensions
 from . import data
 from . import future
 
-def load_databases(sources):
-	futures = [future.Future(load_database, s) for s in sources]
+def load_databases(sources, ignored):
+	load = functools.partial(load_database, ignored=set(ignored))
+	futures = [future.Future(load, s) for s in sources]
 	return [f.get() for f in futures]
 
-def load_database(source):
+def load_database(source, ignored):
 	db = data.Database(source)
 
 	with contextlib.closing(psycopg2.connect(source)) as conn:
 		conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
 		with contextlib.closing(conn.cursor()) as cursor:
-			populate_database(db, cursor)
+			populate_database(db, cursor, ignored)
 
 	return db
 
-def populate_database(db, cursor):
+def is_interesting_namespace(ns, ignored):
+	return not ns.is_internal() and ns.name not in ignored
+
+def populate_database(db, cursor, ignored):
 	db_prefix = "%s:" % db.get_name()
 
 	roles = {}
@@ -65,7 +70,7 @@ def populate_database(db, cursor):
 		oid, name, owner_oid = row
 		ns = data.Namespace(name, roles[owner_oid])
 		namespaces[oid] = ns
-		if not ns.is_internal():
+		if is_interesting_namespace(ns, ignored):
 			db.namespaces.append(ns)
 
 	# Types
@@ -121,7 +126,7 @@ def populate_database(db, cursor):
 		relation = classtype(ns, name, roles[owner_oid])
 		relations[oid] = relation
 		getattr(ns, listname).append(relation)
-		if kind in "rt" and not ns.is_internal():
+		if kind in "rt" and is_interesting_namespace(ns, ignored):
 			full_name = '"%s"."%s"' % (ns.name, name)
 			tables.append((full_name, relation))
 
@@ -158,9 +163,10 @@ def populate_database(db, cursor):
 		name, owner_oid, ns_oid = row
 		ns = namespaces[ns_oid]
 		sequence = data.Sequence(ns, name, roles[owner_oid])
-		full_name = '"%s"."%s"' % (ns.name, name)
-		sequences.append((full_name, sequence))
 		ns.sequences.append(sequence)
+		if is_interesting_namespace(ns, ignored):
+			full_name = '"%s"."%s"' % (ns.name, name)
+			sequences.append((full_name, sequence))
 
 	for full_name, sequence in sequences:
 		cursor.execute("""SAVEPOINT sequence""")

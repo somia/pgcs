@@ -1,4 +1,5 @@
 import BaseHTTPServer as httpserver
+import ConfigParser as configparser
 import httplib
 import os
 import sys
@@ -59,12 +60,15 @@ def main():
 	global tree
 
 	addr_str = sys.argv[1]
-	config = sys.argv[2]
+	config_name = sys.argv[2]
 
-	with open(config) as file:
-		sources = [line for line in file if not line.startswith("#")]
+	config = configparser.SafeConfigParser()
+	config.read([config_name])
 
-	databases = core.load.load_databases(sources)
+	sources = [l for l in config.get("config", "databases").split("\n") if l]
+	ignored = [l for l in config.get("config", "ignore_namespaces").split("\n") if l]
+
+	databases = core.load.load_databases(sources, ignored)
 	diff = core.diff.diff_databases(databases)
 	tree = html.diff.generate(diff)
 
