@@ -107,7 +107,10 @@ def xref(source, target):
 		target.xrefs.add(source)
 
 def flatten(data):
-	return data and data.flatten()
+	if data is None:
+		return None
+	else:
+		return data.flatten()
 
 # Database
 

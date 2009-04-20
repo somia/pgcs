@@ -11,10 +11,16 @@ def similar(a, b):
 	else:
 		return different
 
+def xgetattr(obj, attr):
+	if obj is None:
+		return None
+	else:
+		return getattr(obj, attr)
+
 def parse(objects, kwargs):
 	if objects is None:
 		(attr, objects), = kwargs.items()
-		objects = [obj and getattr(obj, attr) for obj in objects]
+		objects = [xgetattr(obj, attr) for obj in objects]
 	return objects
 
 class Value(object):
@@ -28,7 +34,7 @@ class Value(object):
 		for obj in values:
 			group = -1
 
-			if obj:
+			if obj is not None:
 				found = False
 
 				for group in xrange(len(prototypes)):
@@ -54,8 +60,14 @@ class ObjectValue(Value):
 
 class ObjectListValue(Value):
 	def __init__(self, lists=None, **kwargs):
+		def flatten_seq(seq):
+			if seq is None:
+				return None
+			else:
+				return [data.flatten(obj) for obj in seq]
+
 		lists = parse(lists, kwargs)
-		Value.__init__(self, [[data.flatten(obj) for obj in (seq or ())] for seq in lists])
+		Value.__init__(self, [flatten_seq(seq) for seq in lists])
 
 class OrderedObjectList(ObjectListValue):
 	def __init__(self, lists=None, **kwargs):
@@ -64,8 +76,14 @@ class OrderedObjectList(ObjectListValue):
 
 class IndexedObjectList(OrderedObjectList):
 	def __init__(self, maps=None, **kwargs):
+		def flatten_map(map):
+			if map is None:
+				return None
+			else:
+				return [map[i] for i in sorted(map)]
+
 		maps = parse(maps, kwargs)
-		OrderedObjectList.__init__(self, [[map[i] for i in sorted(map or ())] for map in maps])
+		OrderedObjectList.__init__(self, [flatten_map(map) for map in maps])
 
 class Entry(object):
 	def __init__(self, name, objects=None, **kwargs):
@@ -115,58 +133,6 @@ class NamedObjectList(object):
 
 	def __nonzero__(self):
 		return bool(self.entries)
-
-class __xxx__NamedHash(object):
-	__slots__ = ["object"]
-
-	def __init__(self, object):
-		self.object = object
-
-	def __hash__(self):
-		return hash(self.object.name)
-
-	def __eq__(self, other):
-		return self.object.name == other.object.name
-
-class __xxx___DifferentTypes(Value):
-	def __init__(self, objects=None, **kwargs):
-		self.objects = parse(objects, kwargs)
-		Value.__init__(self, [type(obj) for obj in self.objects])
-
-class __xxx__DifferentTypes(Value):
-	def __init__(self, objects=None, **kwargs):
-		self.objects = parse(objects, kwargs)
-		Value.__init__(self, [type(obj) for obj in self.objects])
-
-class __xxx__OrderedObjectList2WayDiff(object):
-	def __init__(self, seq1, seq2):
-		self.entries = []
-
-		hash1 = [__xxx__NamedHash(o) for o in seq1]
-		hash2 = [__xxx__NamedHash(o) for o in seq2]
-		match = difflib.SequenceMatcher(a=hash1, b=hash2)
-
-		for tag, i1, i2, j1, j2 in match.get_opcodes():
-			if tag in ("delete", "replace"):
-				for obj in seq1[i1:i2]:
-					self.entries.append((obj.name, -1, obj))
-
-			if tag in ("insert", "replace"):
-				for obj in seq2[j1:j2]:
-					self.entries.append((obj.name, +1, obj))
-
-			if tag == "equal":
-				for n in xrange(i2 - i1):
-					obj1 = seq1[i1 + n]
-					obj2 = seq2[j1 + n]
-
-					if type(obj1) != type(obj2):
-						diff = __xxx__DifferentTypes(obj1, obj2)
-					else:
-						diff = diff_types[type(obj1)](obj1, obj2)
-
-					if diff:
-						self.entries.append((obj1.name, 0, diff))
 
 class Any(object):
 	def __init__(self, objects):
@@ -279,6 +245,7 @@ class Sequence(Any):
 class Column(Any):
 	def __init__(self, objects):
 		Any.__init__(self, objects)
+		self.name = Value(name=objects) or None
 		self.type = ObjectValue(type=objects) or None
 		self.notnull = Value(notnull=objects) or None
 		self.default = Value(default=objects) or None

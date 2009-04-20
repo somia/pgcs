@@ -1,15 +1,22 @@
+import difflib
+
 import pgcs.core.data
 import pgcs.core.diff
 core = pgcs.core
 
 from . import tags
 
-def gen_columns(parent, diff):
+database_objects = None
+
+def get_colors(values):
 	groups = {}
-	for value, group in diff.values:
+	for value, group in values:
 		if value is not None:
+			assert group >= 0
 			count = groups.get(group, 0)
 			groups[group] = count + 1
+		else:
+			assert group == -1
 
 	def get_sorting(item):
 		group, count = item
@@ -19,7 +26,10 @@ def gen_columns(parent, diff):
 		group, count = item
 		return group
 
-	colors = [get_group(i) for i in sorted(groups.iteritems(), key=get_sorting)]
+	return [get_group(i) for i in sorted(groups.iteritems(), key=get_sorting)]
+
+def gen_columns(parent, diff):
+	colors = get_colors(diff.values)
 
 	span = parent.span["columns"]
 
@@ -84,25 +94,106 @@ def gen_ordered_object_list(parent, diff, name):
 		head = element.div["head"]
 		head.span["name"][:] = name
 
+		table = element.table
+
+		obis_by_group = []
+		dbis_by_group = []
+
+		for group in xrange(diff.groups):
+			obis = []
+			obis_by_group.append(obis)
+
+			dbis = []
+			dbis_by_group.append(dbis)
+
+			for i, (o, g) in enumerate(diff.values):
+				if g == group:
+					obis.append(i)
+					dbis.append(i)
+
+		colors = get_colors(diff.values)
+
+		tr = table.tr
+		for color, group in enumerate(colors):
+			dbis = dbis_by_group[group]
+			dbns = [database_objects[i].get_name() for i in dbis]
+			tr.th["color-%d" % color].div[:] = " ".join(dbns)
+
 		def listlen(l):
 			if l is None:
 				return 0
 			else:
 				return len(l)
 
-		table = element.table
+		if len(colors) == 2:
+			lists = [diff.lists[obis_by_group[g][0]] for g in colors]
+			gen_2column(table, *lists)
+		else:
+			for i in xrange(max([listlen(l) for l in diff.lists])):
+				tr = table.tr
+				for group in colors:
+					obi = obis_by_group[group][0]
+					lis = diff.lists[obi]
+					if lis is None:
+						print diff.lists
+						print diff.values
+					td = tr.td
+					if i < len(lis):
+						td.div[:] = dump_column(lis[i])
 
-		for i in xrange(max([listlen(l) for l in diff.lists])):
-			tr = table.tr
+def dump_column(obj):
+	s = "%s %s" % (obj.name, obj.type.name)
+	if obj.notnull:
+		s += " notnull"
+	if obj.default:
+		s += " %s" % obj.default
+	return s
 
-			for l in diff.lists:
-				td = tr.td
+class NamedHash(object):
+	def __init__(self, object):
+		self.object = object
 
-				if l is not None and i < len(l):
-					o = l[i]
-					td[:] = str(o)
+	def __hash__(self):
+		return hash(self.object.name)
+
+	def __eq__(self, other):
+		return self.object.name == other.object.name
+
+def gen_2column(table, seq1, seq2):
+	hash1 = [NamedHash(o) for o in seq1]
+	hash2 = [NamedHash(o) for o in seq2]
+	match = difflib.SequenceMatcher(a=hash1, b=hash2)
+
+	for tag, i1, i2, j1, j2 in match.get_opcodes():
+		if tag == "delete":
+			for obj in seq1[i1:i2]:
+				tr = table.tr
+
+				tr.td.div[:] = dump_column(obj)
+				tr.td
+
+		elif tag == "insert":
+			for obj in seq2[j1:j2]:
+				tr = table.tr
+
+				tr.td
+				tr.td.div[:] = dump_column(obj)
+
+		elif tag in ("replace", "equal"):
+			for n in xrange(i2 - i1):
+				tr = table.tr
+
+				if i1 + n < i2:
+					obj1 = seq1[i1 + n]
+					tr.td.div[:] = dump_column(obj1)
 				else:
-					td[:] = "X"
+					tr.td
+
+				if j1 + n < j2:
+					obj2 = seq2[j1 + n]
+					tr.td.div[:] = dump_column(obj2)
+				else:
+					tr.td
 
 # Database
 
@@ -255,6 +346,9 @@ diff_types = {
 }
 
 def generate(diff):
+	global database_objects
+	database_objects = diff.objects
+
 	tree = tags.TagTree()
 	gen_database(tree, diff)
 	return tree.get_element_tree()

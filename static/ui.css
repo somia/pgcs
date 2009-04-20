@@ -120,3 +120,7 @@
 .color-4 div { background-color: #05a; }
 .color-5 div { background-color: #5a0; }
 .color-6 div { background-color: #0a5; }
+
+td div {
+	font-family: monospace;
+}
