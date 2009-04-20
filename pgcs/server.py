@@ -3,12 +3,14 @@ import ConfigParser as configparser
 import httplib
 import os
 import sys
+import traceback
 
 import core.diff
 import core.load
 import html.diff
+import html.tags
 
-tree = None
+config = configparser.SafeConfigParser()
 
 class Handler(httpserver.BaseHTTPRequestHandler):
 	mimetypes = {
@@ -53,24 +55,34 @@ class Handler(httpserver.BaseHTTPRequestHandler):
 		self.send_header("Connection", "close")
 		self.end_headers()
 
+		try:
+			tree = get_diff_tree()
+			x = y
+		except:
+			tagtree = html.tags.TagTree()
+			tagtree.div["error"][:] = traceback.format_exc()
+			tree = tagtree.get_element_tree()
+
 		print >>self.wfile, '<?xml version="1.0" encoding="UTF-8"?>'
 		tree.write(self.wfile, "utf-8")
 
-def main():
-	global tree
-
-	addr_str = sys.argv[1]
-	config_name = sys.argv[2]
-
-	config = configparser.SafeConfigParser()
-	config.read([config_name])
-
+def get_diff_tree():
 	sources = [l for l in config.get("config", "databases").split("\n") if l]
 	ignored = [l for l in config.get("config", "ignore_namespaces").split("\n") if l]
 
 	databases = core.load.load_databases(sources, ignored)
 	diff = core.diff.diff_databases(databases)
 	tree = html.diff.generate(diff)
+
+	return tree
+
+def main():
+	global config
+
+	addr_str = sys.argv[1]
+	config_name = sys.argv[2]
+
+	config.read([config_name])
 
 	if ":" in addr_str:
 		host, port = addr_str.split(":")
@@ -79,8 +91,6 @@ def main():
 		address = "", int(addr_str)
 
 	server = httpserver.HTTPServer(address, Handler)
-
-	print "Initialized"
 
 	try:
 		server.serve_forever()

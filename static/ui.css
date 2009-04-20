@@ -11,6 +11,12 @@
 	font-weight: bold;
 }
 
+.error {
+	margin: 10pt;
+	font-family: monospace;
+	white-space: pre;
+}
+
 .columns {
 	position: absolute;
 	left: 576pt;
