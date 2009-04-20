@@ -65,7 +65,7 @@ def populate_database(db, cursor):
 		oid, name, owner_oid = row
 		ns = data.Namespace(name, roles[owner_oid])
 		namespaces[oid] = ns
-		if not name.startswith("pg_"):
+		if not ns.is_internal():
 			db.namespaces.append(ns)
 
 	# Types
@@ -121,7 +121,7 @@ def populate_database(db, cursor):
 		relation = classtype(ns, name, roles[owner_oid])
 		relations[oid] = relation
 		getattr(ns, listname).append(relation)
-		if kind in "rt" and not ns.name.startswith("pg_"):
+		if kind in "rt" and not ns.is_internal():
 			full_name = '"%s"."%s"' % (ns.name, name)
 			tables.append((full_name, relation))
 

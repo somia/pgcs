@@ -163,6 +163,10 @@ class Namespace(Data):
 		Data.__init__(self)
 		self.name, self.owner = values
 
+
+	def is_internal(self):
+		return self.name.startswith("pg_") or self.name == "information_schema"
+
 # Type
 
 class Type(XReferee):
