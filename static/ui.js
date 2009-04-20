@@ -1,5 +1,7 @@
 $(function() {
 	$("#content").load("/dynamic", null, function() {
+		$("#loading").hide();
+
 		$(".expander").click(function() {
 			if ($(this).text() == "+") {
 				$(this).siblings(".children").show();

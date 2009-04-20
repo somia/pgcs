@@ -6,6 +6,11 @@
 	font-size: 10pt;
 }
 
+#loading blink {
+	font-size: 200px;
+	font-weight: bold;
+}
+
 .columns {
 	position: absolute;
 	left: 576pt;
