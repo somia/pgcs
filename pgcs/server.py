@@ -57,7 +57,6 @@ class Handler(httpserver.BaseHTTPRequestHandler):
 
 		try:
 			tree = get_diff_tree()
-			x = y
 		except:
 			tagtree = html.tags.TagTree()
 			tagtree.div["error"][:] = traceback.format_exc()
