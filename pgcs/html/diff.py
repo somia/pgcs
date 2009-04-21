@@ -56,13 +56,6 @@ def gen_columns(parent, diff):
 
 		span.span[classes].div[:] = content
 
-def gen_value(parent, diff, name):
-	if diff:
-		div = parent.div["value"]
-		div.span["name"][:] = name
-		gen_columns(div, diff)
-		div.div["diff"][:] = diff
-
 def gen_named_object_list(parent, diff, name=None):
 	if diff:
 		element = parent.div["list"]
@@ -87,9 +80,13 @@ def gen_named_object_list(parent, diff, name=None):
 				children = div.div["children"]
 				func(children, entry.diff)
 
-def gen_ordered_object_list(parent, diff, name):
+def gen_value(parent, diff, name, is_list=False):
 	if diff:
-		element = parent.div["list"]
+		cls = "value"
+		if is_list:
+			cls = "list"
+
+		element = parent.div[cls]
 
 		head = element.div["head"]
 		head.span["name"][:] = name
@@ -125,21 +122,35 @@ def gen_ordered_object_list(parent, diff, name):
 			else:
 				return len(l)
 
-		if len(colors) == 2:
-			lists = [diff.lists[obis_by_group[g][0]] for g in colors]
-			gen_2column(table, *lists)
+		if is_list:
+			if len(colors) == 2:
+				lists = [diff.lists[obis_by_group[g][0]] for g in colors]
+				gen_2column(table, *lists)
+			else:
+				for i in xrange(max([listlen(l) for l in diff.lists])):
+					tr = table.tr
+					for group in colors:
+						obi = obis_by_group[group][0]
+						lis = diff.lists[obi]
+						td = tr.td
+						if i < len(lis):
+							td.div[:] = dump_column(lis[i])
+		elif isinstance(diff, core.diff.ObjectValue):
+			for group in colors:
+				obi = obis_by_group[group][0]
+				obj = diff.objects[obi]
+				tr.td.div[:] = ".".join(obj.flatten())
 		else:
-			for i in xrange(max([listlen(l) for l in diff.lists])):
-				tr = table.tr
-				for group in colors:
-					obi = obis_by_group[group][0]
-					lis = diff.lists[obi]
-					if lis is None:
-						print diff.lists
-						print diff.values
-					td = tr.td
-					if i < len(lis):
-						td.div[:] = dump_column(lis[i])
+			for group in colors:
+				obi = obis_by_group[group][0]
+				val, grp = diff.values[obi]
+				try:
+					tr.td.div[:] = unicode(val)
+				except:
+					tr.td.div[:] = "?"
+
+def gen_ordered_object_list(parent, diff, name):
+	gen_value(parent, diff, name, True)
 
 def dump_column(obj):
 	s = "%s %s" % (obj.name, obj.type.name)

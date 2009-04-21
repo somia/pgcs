@@ -55,8 +55,8 @@ class Value(object):
 
 class ObjectValue(Value):
 	def __init__(self, objects=None, **kwargs):
-		objects = parse(objects, kwargs)
-		Value.__init__(self, [data.flatten(obj) for obj in objects])
+		self.objects = parse(objects, kwargs)
+		Value.__init__(self, [data.flatten(obj) for obj in self.objects])
 
 class ObjectListValue(Value):
 	def __init__(self, lists=None, **kwargs):
