@@ -7,7 +7,7 @@ import psycopg2.extensions
 from . import data
 from . import future
 
-def load_databases(sources, ignored):
+def load_databases(sources, ignored=[]):
 	load = functools.partial(load_database, ignored=set(ignored))
 	futures = [future.Future(load, s) for s in sources]
 	return [f.get() for f in futures]
