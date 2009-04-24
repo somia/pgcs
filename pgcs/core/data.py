@@ -238,7 +238,14 @@ class Composite(Relation):
 	pass
 
 class Index(Relation):
-	pass
+	# TODO: definition
+	value_info = Relation.value_info + [
+		("table",       FLAG_OBJECT),
+	]
+
+	def init_table(self, table):
+		self.table = table
+		xref(self, self.table)
 
 class RuleRelation(Relation):
 	value_info = Relation.value_info + [
@@ -259,6 +266,7 @@ class Table(RuleRelation):
 		self.has_content = has_content
 
 class View(RuleRelation):
+	# TODO: definition
 	pass
 
 # Sequence

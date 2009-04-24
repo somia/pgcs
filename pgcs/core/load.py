@@ -134,6 +134,15 @@ def populate_database(db, cursor, ignored):
 			full_name = '"%s"."%s"' % (ns.name, name)
 			tables.append((full_name, relation))
 
+	cursor.execute("""SELECT indexrelid, indrelid
+	                  FROM pg_index""")
+	for row in cursor:
+		index_oid, table_oid = row
+		index = relations.get(index_oid)
+		if index is not None:
+			table = relations[table_oid]
+			index.init_table(table)
+
 	cursor.execute("""SELECT attrelid, attname, atttypid, attnum, attnotnull,
 	                         pg_get_expr(adbin, attrelid)
 	                  FROM pg_attribute
