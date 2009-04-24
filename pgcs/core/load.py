@@ -125,7 +125,11 @@ def populate_database(db, cursor, ignored):
 		classtype, listname = relation_types[kind]
 		relation = classtype(ns, name, roles[owner_oid])
 		relations[oid] = relation
-		getattr(ns, listname).append(relation)
+		# TODO: this check should be done better
+		if not (kind == "i" and (name.endswith("_pkey") or
+					 name.endswith("_key") or
+					 name.endswith("_idx"))):
+			getattr(ns, listname).append(relation)
 		if kind in "rt" and is_interesting_namespace(ns, ignored):
 			full_name = '"%s"."%s"' % (ns.name, name)
 			tables.append((full_name, relation))
