@@ -229,7 +229,7 @@ def populate_database(db, cursor, ignored):
 	# Functions
 
 	cursor.execute("""SELECT oid, proname, pronamespace, proowner, prolang, prorettype,
-	                         coalesce(proallargtypes, proargtypes), prosrc, probin
+	                         proargtypes, prosrc, probin
 	                  FROM pg_proc
 	                  ORDER BY pronamespace, proname""")
 	for row in cursor:
@@ -238,7 +238,7 @@ def populate_database(db, cursor, ignored):
 		owner = roles[owner_oid]
 		lang = languages[lang_oid]
 		rettype = types[rettype_oid]
-		argtypes = [types[oid] for oid in argtype_oids]
+		argtypes = [types[int(oid)] for oid in argtype_oids.split()]
 		function = data.Function(ns, name, owner, lang, rettype, argtypes, src1, src2)
 		functions[oid] = function
 		ns.functions.append(function)
