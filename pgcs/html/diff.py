@@ -136,18 +136,21 @@ def gen_value(parent, diff, name, is_list=False):
 						if i < len(lis):
 							td.div[:] = dump_column(lis[i])
 		elif isinstance(diff, core.diff.ObjectValue):
+			tr = table.tr
 			for group in colors:
 				obi = obis_by_group[group][0]
 				obj = diff.objects[obi]
 				tr.td.div[:] = ".".join(obj.flatten())
 		else:
+			tr = table.tr
 			for group in colors:
 				obi = obis_by_group[group][0]
 				val, grp = diff.values[obi]
 				try:
-					tr.td.div[:] = unicode(val)
+					content = unicode(val)
 				except:
-					tr.td.div[:] = "?"
+					content = "?"
+				tr.td.div[:] = content
 
 def gen_ordered_object_list(parent, diff, name):
 	gen_value(parent, diff, name, True)

@@ -94,6 +94,9 @@ class Data(object):
 
 		return value
 
+	def get_name(self):
+		return self.flatten()[-1]
+
 class XReferee(Data):
 	def __init__(self):
 		Data.__init__(self)
@@ -207,7 +210,7 @@ class Function(XReferee):
 		("owner",       FLAG_VALUE),
 		("language",    FLAG_OBJECT),
 		("rettype",     FLAG_OBJECT),
-		("argtypes",    FLAG_OBJECT | FLAG_LIST),
+		("argtypes",    FLAG_OBJECT | FLAG_LIST | FLAG_KEY),
 		("source1",     FLAG_VALUE),
 		("source2",     FLAG_VALUE),
 	]
@@ -219,6 +222,10 @@ class Function(XReferee):
 		xref(self, self.language)
 		xref(self, self.rettype)
 		xref(self, self.argtypes)
+
+	def get_name(self):
+		args = [type.name for type in self.argtypes or ()]
+		return "%s(%s)" % (self.name, ", ".join(args))
 
 # Relation
 
@@ -409,3 +416,6 @@ class OperatorClass(Data):
 			self.default, self.keytype = values
 		xref(self, self.intype)
 		xref(self, self.keytype)
+
+	def get_name(self):
+		return "%s/%s" % (self.name, self.method)

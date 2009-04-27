@@ -85,7 +85,7 @@ class IndexedObjectList(OrderedObjectList):
 		maps = parse(maps, kwargs)
 		OrderedObjectList.__init__(self, [flatten_map(map) for map in maps])
 
-class Entry(object):
+class NamedEntry(object):
 	def __init__(self, name, objects=None, **kwargs):
 		self.name = name
 		self.objects = parse(objects, kwargs)
@@ -120,14 +120,15 @@ class NamedObjectList(object):
 		def name_map(seq):
 			map = {}
 			for obj in seq or ():
-				names.add(obj.name)
-				map[obj.name] = obj
+				name = obj.get_name()
+				names.add(name)
+				map[name] = obj
 			return map
 
 		maps = [name_map(seq) for seq in sequences]
 
 		for name in sorted(names):
-			entry = Entry(name, [map.get(name) for map in maps])
+			entry = NamedEntry(name, [map.get(name) for map in maps])
 			if entry:
 				self.entries.append(entry)
 
