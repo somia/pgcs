@@ -125,11 +125,7 @@ def populate_database(db, cursor, ignored):
 		classtype, listname = relation_types[kind]
 		relation = classtype(ns, name, roles[owner_oid])
 		relations[oid] = relation
-		# TODO: this check should be done better
-		if not (kind == "i" and (name.endswith("_pkey") or
-					 name.endswith("_key") or
-					 name.endswith("_idx"))):
-			getattr(ns, listname).append(relation)
+		getattr(ns, listname).append(relation)
 		if kind in "rt" and is_interesting_namespace(ns, ignored):
 			full_name = '"%s"."%s"' % (ns.name, name)
 			tables.append((full_name, relation))
@@ -240,6 +236,7 @@ def populate_database(db, cursor, ignored):
 		lang = languages[lang_oid]
 		rettype = types[rettype_oid]
 		argtypes = [types[int(oid)] for oid in argtype_oids.split()]
+		src1 = trim_function(lang, src1)
 		function = data.Function(ns, name, owner, lang, rettype, argtypes, src1, src2)
 		functions[oid] = function
 		ns.functions.append(function)
@@ -252,8 +249,9 @@ def populate_database(db, cursor, ignored):
 	                  ORDER BY tgrelid, tgname""")
 	for row in cursor:
 		table_oid, name, function_oid, description = row
-		trigger = data.Trigger(name, functions[function_oid], description)
-		relations[table_oid].triggers.append(trigger)
+		table = relations[table_oid]
+		trigger = data.Trigger(name, functions[function_oid], description, table)
+		table.triggers.append(trigger)
 
 	# Rules
 
@@ -296,3 +294,15 @@ def populate_database(db, cursor, ignored):
 		ns.opclasses.append(opclass)
 
 	# TODO: casts
+
+def trim_function(language, source):
+	if language.name == "plpgsql":
+		buf = ""
+		for line in source.split("\n"):
+			line = line.strip()
+			if line:
+				if buf:
+					buf += " "
+				buf += line
+		source = buf
+	return source

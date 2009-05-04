@@ -370,11 +370,12 @@ class Trigger(Data):
 		("name",        FLAG_VALUE  | FLAG_KEY),
 		("function",    FLAG_OBJECT),
 		("description", FLAG_VALUE),
+		("table",       FLAG_OBJECT),
 	]
 
 	def __init__(self, *values):
 		Data.__init__(self)
-		self.name, self.function, self.description = values
+		self.name, self.function, self.description, self.table = values
 		xref(self, self.function)
 
 # Rule

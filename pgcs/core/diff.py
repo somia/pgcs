@@ -109,6 +109,8 @@ class NamedEntry(object):
 	def __nonzero__(self):
 		return functools.reduce(similar, self.objects) is different
 
+temporary_tweak = False
+
 class NamedObjectList(object):
 	def __init__(self, _sequences=None, **kwargs):
 		sequences = parse(_sequences, kwargs)
@@ -127,9 +129,17 @@ class NamedObjectList(object):
 
 		maps = [name_map(seq) for seq in sequences]
 
+		global temporary_tweak
+		temporary_tweak_copy = temporary_tweak
+		temporary_tweak = False
+
 		for name in sorted(names):
 			entry = NamedEntry(name, [map.get(name) for map in maps])
 			if entry:
+				# TODO: XXX XIIT TEMPORARY TWEAK
+				#if temporary_tweak_copy and None in entry.objects:
+				#	continue
+
 				self.entries.append(entry)
 
 	def __nonzero__(self):
@@ -150,7 +160,10 @@ class Any(object):
 class Database(Any):
 	def __init__(self, objects):
 		Any.__init__(self, objects)
+		global temporary_tweak
+		temporary_tweak = True
 		self.languages = NamedObjectList(languages=objects) or None
+		temporary_tweak = True
 		self.namespaces = NamedObjectList(namespaces=objects) or None
 
 # Language
@@ -165,15 +178,26 @@ class Language(Any):
 class Namespace(Any):
 	def __init__(self, objects):
 		Any.__init__(self, objects)
+		global temporary_tweak
+		temporary_tweak = True
 		self.owner = Value(owner=objects) or None
+		temporary_tweak = True
 		self.types = NamedObjectList(types=objects) or None
+		temporary_tweak = True
 		self.composites = NamedObjectList(composites=objects) or None
+		temporary_tweak = True
 		self.indexes = NamedObjectList(indexes=objects) or None
+		temporary_tweak = True
 		self.tables = NamedObjectList(tables=objects) or None
+		temporary_tweak = True
 		self.views = NamedObjectList(views=objects) or None
+		temporary_tweak = True
 		self.sequences = NamedObjectList(sequences=objects) or None
+		temporary_tweak = True
 		self.functions = NamedObjectList(functions=objects) or None
+		temporary_tweak = True
 		self.operators = NamedObjectList(operators=objects) or None
+		temporary_tweak = True
 		self.opclasses = NamedObjectList(opclasses=objects) or None
 
 # Type
