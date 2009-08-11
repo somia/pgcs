@@ -108,7 +108,7 @@ def handle_table_columns(table_diff, seq1, seq2):
 	deleted = {}
 
 	for tag, i1, i2, j1, j2 in match.get_opcodes():
-		if tag == "delete":
+		if tag in ("delete", "replace"):
 			for obj in seq1[i1:i2]:
 				deleted[obj.name] = obj
 
@@ -121,11 +121,11 @@ def handle_table_columns(table_diff, seq1, seq2):
 			copy_table_column(table_name, obj)
 
 def handle_table(diff):
-	copy_entries(diff, diff.constraints)
-	alter_trigger_entries(diff, diff.triggers)
-
 	if diff.columns:
 		handle_table_columns(diff, *diff.columns.lists)
+
+	copy_entries(diff, diff.constraints)
+	alter_trigger_entries(diff, diff.triggers)
 
 def handle_function(diff):
 	if diff.source1:
