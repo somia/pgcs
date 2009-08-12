@@ -143,7 +143,7 @@ def populate_database(db, cursor, ignored):
 			table = relations[table_oid]
 			index.init_table(table)
 
-	cursor.execute("""SELECT attrelid, attname, atttypid, attnum, attnotnull,
+	cursor.execute("""SELECT attrelid, attname, atttypid, attnotnull,
 	                         pg_get_expr(adbin, attrelid)
 	                  FROM pg_attribute
 	                  INNER JOIN pg_class ON attrelid = pg_class.oid
@@ -151,9 +151,12 @@ def populate_database(db, cursor, ignored):
 	                  WHERE relkind != 'S' AND attnum > 0 AND NOT attisdropped
 	                  ORDER BY attrelid, attnum""")
 	for row in cursor:
-		relation_oid, name, type_oid, num, notnull, default = row
+		relation_oid, name, type_oid, notnull, default = row
 		column = data.Column(name, types[type_oid], notnull, default)
-		relations[relation_oid].columns[num] = column
+		relations[relation_oid].columns.append(column)
+
+	for relation in relations.itervalues():
+		relation.columns.sort()
 
 	for full_name, table in tables:
 		cursor.execute("""SAVEPOINT table_savepoint""")
@@ -214,13 +217,11 @@ def populate_database(db, cursor, ignored):
 		name, kind, table_oid, domain_oid, f_oid, col_nums, f_nums, definition = row
 		if table_oid:
 			table = relations[table_oid]
-			cols = [table.columns[n] for n in col_nums]
 			if kind == "f":
 				f_table = relations[f_oid]
-				f_cols = [f_table.columns[n] for n in f_nums]
-				cons = data.ForeignKey(name, definition, cols, f_table, f_cols)
+				cons = data.ForeignKey(name, definition, table.columns, f_table, f_table.columns)
 			else:
-				cons = table_constraint_types[kind](name, definition, cols)
+				cons = table_constraint_types[kind](name, definition, table.columns)
 			table.constraints.append(cons)
 		else:
 			cons = domain_constraint_types[kind](name, definition)
