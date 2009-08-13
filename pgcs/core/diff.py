@@ -233,7 +233,7 @@ class Relation(Any):
 	def __init__(self, objects):
 		Any.__init__(self, objects)
 		self.owner = Value(owner=objects) or None
-		self.columns = OrderedObjectList(columns=objects) or None
+		self.columns = IndexedObjectList(columns=objects) or None
 
 class Composite(Relation):
 	pass

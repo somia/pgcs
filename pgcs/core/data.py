@@ -234,7 +234,7 @@ class Relation(XReferee):
 		("namespace",   FLAG_OBJECT | FLAG_KEY),
 		("name",        FLAG_VALUE  | FLAG_KEY),
 		("owner",       FLAG_VALUE),
-		("columns",     FLAG_OBJECT | FLAG_LIST),
+		("columns",     FLAG_OBJECT | FLAG_DICT),
 	]
 
 	def __init__(self, *values):
@@ -309,9 +309,6 @@ class Column(XReferee):
 		XReferee.__init__(self)
 		self.name, self.type, self.notnull, self.default = values
 		xref(self, self.type)
-
-	def __cmp__(self, other):
-		return cmp(self.name, other.name)
 
 # Constraint
 
