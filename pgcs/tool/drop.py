@@ -1,8 +1,9 @@
 import sys
 
-import core.data
-import core.diff
-import core.load
+import pgcs.core.data
+import pgcs.core.diff
+import pgcs.core.load
+core = pgcs.core
 
 def get_entries(named_object_list):
 	if named_object_list:

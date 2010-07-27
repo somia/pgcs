@@ -1,10 +1,13 @@
 import difflib
 import sys
 
-import core.data
-import core.diff
-import core.load
-import html.diff
+import pgcs.core.data
+import pgcs.core.diff
+import pgcs.core.load
+core = pgcs.core
+
+import pgcs.html.diff
+html = pgcs.html
 
 def get_object_name(object):
 	return "%s.%s" % (object.namespace.name, object.get_name())
