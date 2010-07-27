@@ -6,11 +6,6 @@
 	font-size: 10pt;
 }
 
-#loading blink {
-	font-size: 200px;
-	font-weight: bold;
-}
-
 .error {
 	margin: 10pt;
 	font-family: monospace;
